@@ -77,7 +77,6 @@ class TokenTableState extends State<TokenTable> {
                 ),
                 child: Column(children: <Widget>[
                   addNavigateControls(),
-                  addTableHeader(),
                   ...currentTokens
                       .map((token) => ExpandableNotifier(
                             child: ScrollOnExpand(
