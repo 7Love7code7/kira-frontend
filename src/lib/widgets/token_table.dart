@@ -76,6 +76,7 @@ class TokenTableState extends State<TokenTable> {
                 ),
                 child: Column(children: <Widget>[
                   addNavigateControls(),
+                  addTableHeader(),
                   ...currentTokens
                       .map((token) => ExpandableNotifier(
                             child: ScrollOnExpand(
@@ -141,6 +142,34 @@ class TokenTableState extends State<TokenTable> {
     );
   }
 
+  Widget addTableHeader() {
+    List<String> titles = ['Token Name', 'Balance'];
+
+    return Container(
+      padding: EdgeInsets.all(5),
+      margin: EdgeInsets.only(top: 15, right: 40, bottom: 15),
+      child: Row(
+        children: titles
+            .asMap()
+            .map(
+              (index, title) => MapEntry(
+                  index,
+                  Expanded(
+                      flex: 1,
+                      child: InkWell(
+                          onTap: () => this.setState(() {}),
+                          child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
+                            Text(title,
+                                style:
+                                    TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                          ])))),
+            )
+            .values
+            .toList(),
+      ),
+    );
+  }
+
   refreshExpandStatus({String newExpandName = ''}) {
     widget.onTapRow(newExpandName);
     this.setState(() {
@@ -169,7 +198,7 @@ class TokenTableState extends State<TokenTable> {
                 Expanded(
                     flex: ResponsiveWidget.isSmallScreen(context) ? 3 : 2,
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         SvgPicture.network('https://cors-anywhere.kira.network/' + token.graphicalSymbol,
                             placeholderBuilder: (BuildContext context) => const CircularProgressIndicator(),
@@ -178,7 +207,7 @@ class TokenTableState extends State<TokenTable> {
                         SizedBox(width: 15),
                         Text(
                           token.assetName,
-                          textAlign: TextAlign.center,
+                          textAlign: TextAlign.start,
                           style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16),
                         )
                       ],
@@ -186,10 +215,10 @@ class TokenTableState extends State<TokenTable> {
                 Expanded(
                     flex: 2,
                     child: Align(
-                        alignment: Alignment.center,
+                        alignment: Alignment.centerLeft,
                         child: Text(
-                          token.balance.toString() + " " + token.ticker,
-                          textAlign: TextAlign.center,
+                          token.getTokenBalanceInTicker.toString() + " " + token.ticker,
+                          textAlign: TextAlign.left,
                           style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16),
                         ))),
                 ExpandableIcon(

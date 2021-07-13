@@ -78,7 +78,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
         for (int i = 0; i < tokens.length; i++) {
           if (tokens[i].ticker.toUpperCase() == "KEX") {
-            this.kexBalance = tokens[i].balance;
+            this.kexBalance = tokens[i].getTokenBalanceInTicker;
             return;
           }
         }
@@ -393,7 +393,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                             isValidAddress && tabType == 0
                                 ? Align(alignment: Alignment.center, child: qrCode())
                                 : Container(),
-                            (isLoggedIn || isValidAddress) ? addTableHeader() : Container(),
+                            // (isLoggedIn || isValidAddress) ? addTableHeader() : Container(),
                             isValidAddress && tabType == 0 ? addDepositTransactionsTable() : Container(),
                             isValidAddress && tabType == 1 ? addWithdrawalTransactionsTable() : Container(),
                             (isLoggedIn || (isValidAddress && tabType == 2))
