@@ -220,12 +220,15 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                                 ? addWithdrawalAmountSmall(context)
                                 : addWithdrawalAmountBig(context),
                             // if (loading == true) addLoadingIndicator(),
-                            !initialFetched ? addLoadingIndicator() : transactions.isEmpty ? Container(
-                                margin: EdgeInsets.only(top: 20, left: 20),
-                                child: Text("No withdrawal transactions to show",
-                                    style: TextStyle(
-                                        color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                : addTransactionsTable(),
+                            !initialFetched
+                                ? addLoadingIndicator()
+                                : transactions.isEmpty
+                                    ? Container(
+                                        margin: EdgeInsets.only(top: 20, left: 20),
+                                        child: Text("No withdrawal transactions to show",
+                                            style: TextStyle(
+                                                color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                                    : addTransactionsTable(),
                           ],
                         )),
                   ));
@@ -535,7 +538,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         style: TextStyle(fontSize: 16),
         textAlign: TextAlign.center,
       ),
-      onPressed: () {},
+      onPressed: () {
+        Navigator.of(context, rootNavigator: true).pop();
+      },
     );
 
     // show the dialog
