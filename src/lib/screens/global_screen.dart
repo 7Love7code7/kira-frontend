@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,9 @@ class GlobalScreen extends StatefulWidget {
 
 class _GlobalScreenState extends State<GlobalScreen> {
   String accountId;
+
+  Timer timer;
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +34,12 @@ class _GlobalScreenState extends State<GlobalScreen> {
         Navigator.pushReplacementNamed(context, '/account');
       }
     });
+
+    timer = Timer.periodic(Duration(minutes: 2), (Timer t) => fetchData());
+  }
+
+  void fetchData() async {
+    print("--- SOS ---");
   }
 
   void getCurrentAccountFromCache() async {
