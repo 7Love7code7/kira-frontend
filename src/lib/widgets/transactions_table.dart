@@ -304,7 +304,7 @@ class _TransactionsTableState extends State<TransactionsTable> {
                           color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
               SizedBox(height: 10),
               Flexible(
-                  child: Text(transaction.amount,
+                  child: Text(transaction.getAmount,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
             ],
@@ -321,6 +321,23 @@ class _TransactionsTableState extends State<TransactionsTable> {
               SizedBox(height: 10),
               Flexible(
                   child: Text(transaction.getTimeString,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
+            ],
+          ),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                  width: fieldWidth,
+                  child: Text("Memo :",
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
+              SizedBox(width: 10),
+              Flexible(
+                  child: Text(transaction.memo,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
             ],
@@ -350,23 +367,6 @@ class _TransactionsTableState extends State<TransactionsTable> {
                           child: Icon(Icons.circle, size: 12.0, color: transaction.getStatusColor()),
                         ),
                       ))),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                  width: fieldWidth,
-                  child: Text("Memo :",
-                      textAlign: TextAlign.left,
-                      style: TextStyle(
-                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
-              SizedBox(width: 10),
-              Flexible(
-                  child: Text(transaction.memo,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
             ],
           ),
         ]));
