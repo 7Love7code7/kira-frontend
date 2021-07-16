@@ -47,7 +47,7 @@ class ProposalService {
     while (k < limit) {
       if (!await _storageService.checkModelExists(ModelType.PROPOSAL, (offset + k).toString())) break;
       var proposal = Proposal.fromJson(await _storageService.getModel(ModelType.PROPOSAL, (offset + k).toString()));
-      proposal.voteability = await checkVoteability(proposal.proposalId, account);
+      proposal.voteability = account.isEmpty ? Voteability.empty : await checkVoteability(proposal.proposalId, account);
       proposal.voteResults = await getVoteResult(proposal.proposalId);
       proposalList.add(proposal);
       k++;

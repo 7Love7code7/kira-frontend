@@ -642,6 +642,10 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                         builder: (BuildContext context) {
                           return CustomDialog(
                             contentWidgets: [
+                              Text(Strings.kiraNetwork,
+                                style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
+                              ),
+                              SizedBox(height: 15),
                               qrCode()
                             ],
                           );

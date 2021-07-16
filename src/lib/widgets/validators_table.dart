@@ -270,10 +270,24 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   )
               ),
               SizedBox(width: 20),
-              Flexible(child: Text(
-                  validator.valkey,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+              Flexible(child:
+                InkWell(
+                  onTap: () {
+                    copyText(validator.valkey);
+                    showToast(Strings.validatorAddressCopied);
+                  },
+                  child: Text(
+                    validator.valkey,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+                )),
+              SizedBox(width: 10),
+              InkWell(
+                onTap: () {
+                  copyText(validator.valkey);
+                  showToast(Strings.validatorAddressCopied);
+                },
+                child: Icon(Icons.copy, size: 20, color: KiraColors.white),
               ),
             ],
           ),
@@ -289,10 +303,24 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   )
               ),
               SizedBox(width: 20),
-              Flexible(child: Text(
-                  validator.pubkey,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+              Flexible(child:
+                InkWell(
+                  onTap: () {
+                    copyText(validator.pubkey);
+                    showToast(Strings.publicAddressCopied);
+                  },
+                  child: Text(
+                    validator.pubkey,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+                )),
+              SizedBox(width: 10),
+              InkWell(
+                onTap: () {
+                  copyText(validator.pubkey);
+                  showToast(Strings.publicAddressCopied);
+                },
+                child: Icon(Icons.copy, size: 20, color: KiraColors.white),
               ),
             ],
           ),
