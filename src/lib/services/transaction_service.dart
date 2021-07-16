@@ -48,7 +48,7 @@ class TransactionService {
   Future<List<Transaction>> getTransactions({account, max, isWithdrawal, pubKey}) async {
     List<Transaction> transactions = [];
 
-    List<String> apiUrl = await _storageService.getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     String url = isWithdrawal == true ? "withdraws" : "deposits";
     String bech32Address = account.bech32Address;
