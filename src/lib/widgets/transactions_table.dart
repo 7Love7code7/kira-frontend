@@ -336,7 +336,7 @@ class _TransactionsTableState extends State<TransactionsTable> {
                           color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
               SizedBox(width: 10),
               Flexible(
-                  child: Text(transaction.memo,
+                  child: Text(transaction.hash,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),

@@ -261,7 +261,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
           this.setState(() {
             query = newText.toLowerCase();
             expandedTop = -1;
-            page = 1;
             validatorController.add(query);
           });
         },
@@ -456,6 +455,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
           ? a.isFavorite.toString().compareTo(b.isFavorite.toString())
           : b.isFavorite.toString().compareTo(a.isFavorite.toString()));
     }
-    validatorController.add(query);
+    validatorController.add(null);
   }
 }

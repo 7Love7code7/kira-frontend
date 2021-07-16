@@ -375,45 +375,39 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 20, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1000),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            !isLoggedIn ? addSearchInput() : Container(),
-                            SizedBox(height: 10),
-                            !isTyping && query != "" ? addHeaderTitle() : Container(),
-                            isValidAddress ? addAccountAddress() : Container(),
-                            isValidAddress ? addAccountBalance() : Container(),
-                            isValidAddress ? Wrap(children: tabItems()) : Container(),
-                            isValidAddress && tabType == 0
-                                ? Align(alignment: Alignment.center, child: qrCode())
-                                : Container(),
-                            // (isLoggedIn || isValidAddress) ? addTableHeader() : Container(),
-                            isValidAddress && tabType == 0 ? addDepositTransactionsTable() : Container(),
-                            isValidAddress && tabType == 1 ? addWithdrawalTransactionsTable() : Container(),
-                            (isLoggedIn || (isValidAddress && tabType == 2))
-                                ? (tokens.isEmpty)
-                                    ? Container(
-                                        margin: EdgeInsets.only(top: 20, left: 20),
-                                        child: Text("No tokens",
-                                            style: TextStyle(
-                                                color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                    : addTokenTable()
-                                : Container(),
-                          ],
-                        ),
-                      )));
-            }));
+      body: BlocConsumer<AccountBloc, AccountState>(
+        listener: (context, state) {},
+        builder: (context, state) {
+          return HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.only(top: 20, bottom: 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1000),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    !isLoggedIn ? addSearchInput() : Container(),
+                    SizedBox(height: 10),
+                    !isTyping && query != "" ? addHeaderTitle() : Container(),
+                    isValidAddress ? addAccountAddress() : Container(),
+                    isValidAddress ? Wrap(children: tabItems()) : Container(),
+                    (isLoggedIn || isValidAddress) ? addTableHeader() : Container(),
+                    isValidAddress && tabType == 0 ? addDepositTransactionsTable() : Container(),
+                    isValidAddress && tabType == 1 ? addWithdrawalTransactionsTable() : Container(),
+                    (isLoggedIn || (isValidAddress && tabType == 2)) ? (tokens.isEmpty)
+                      ? Container(
+                        margin: EdgeInsets.only(top: 20, left: 20),
+                        child: Text("No tokens",
+                          style: TextStyle(
+                            color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                    : addTokenTable() : Container(),
+                  ],
+                ),
+              )));
+        }));
   }
 
   Widget qrCode() {
@@ -613,39 +607,55 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
   Widget addAccountAddress() {
     return Container(
-        padding: EdgeInsets.all(5),
-        margin: EdgeInsets.only(right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text("Address", style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          InkWell(
-              onTap: () {
-                copyText(currentAccount.bech32Address);
-                showToast(Strings.publicAddressCopied);
-              },
-              child: // Flexible(
+      padding: EdgeInsets.all(5),
+      margin: EdgeInsets.only(right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Address",
+              style:
+              TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                InkWell(
+                  onTap: () {
+                    copyText(currentAccount.bech32Address);
+                    showToast(Strings.publicAddressCopied);
+                  },
+                  child: // Flexible(
                   Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(currentAccount.getReducedBechAddress,
-                      textAlign: TextAlign.end,
-                      style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-                  SizedBox(width: 5),
-                  Icon(Icons.copy, size: 20, color: KiraColors.white),
-                ],
-              ))
-        ]));
-  }
-
-  Widget addAccountBalance() {
-    return Container(
-        padding: EdgeInsets.all(5),
-        margin: EdgeInsets.only(right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text("Balance (KEX)",
-              style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          Text(this.kexBalance.toString(),
-              style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-        ]));
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(currentAccount.getReducedBechAddress,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                      SizedBox(width: 5),
+                      Icon(Icons.copy, size: 20, color: KiraColors.white),
+                    ],
+                  )),
+                SizedBox(width: 15),
+                InkWell(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return CustomDialog(
+                            contentWidgets: [
+                              qrCode()
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    child:
+                        Icon(Icons.qr_code, size: 20, color: KiraColors.white),
+                  )
+              ]
+            )
+          ]
+        )
+    );
   }
 
   List<Widget> tabItems() {
