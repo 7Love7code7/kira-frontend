@@ -11,9 +11,9 @@ class ProposalService {
   int lastOffset = 0;
 
   Future<void> getProposalsCount() async {
-    var apiUrl = await loadInterxURL();
-    var data = await http.get(apiUrl[0] + "/kira/gov/proposals?count_total=true",
-        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var apiUrl = await getLiveRpcUrl();
+    var data = await http
+        .get(apiUrl[0] + "/kira/gov/proposals?count_total=true", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     if (!bodyData.containsKey('pagination')) return;
@@ -24,7 +24,7 @@ class ProposalService {
   Future<void> getProposals(bool loadNew, {String account = ''}) async {
     List<Proposal> proposalList = [];
 
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
     var offset, limit;
     if (loadNew) {
       offset = totalCount;
@@ -43,8 +43,7 @@ class ProposalService {
 
     var k = 0;
     while (k < limit) {
-      if (!await checkModelExists(ModelType.PROPOSAL, (offset + k).toString()))
-        break;
+      if (!await checkModelExists(ModelType.PROPOSAL, (offset + k).toString())) break;
       var proposal = Proposal.fromJson(await getModel(ModelType.PROPOSAL, (offset + k).toString()));
       proposal.voteability = await checkVoteability(proposal.proposalId, account);
       proposal.voteResults = await getVoteResult(proposal.proposalId);
@@ -53,7 +52,8 @@ class ProposalService {
     }
 
     if (k < limit) {
-      var data = await http.get(apiUrl[0] + "/kira/gov/proposals?offset=${offset + k}&limit=${limit - k}&count_total=true",
+      var data = await http.get(
+          apiUrl[0] + "/kira/gov/proposals?offset=${offset + k}&limit=${limit - k}&count_total=true",
           headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
       var bodyData = json.decode(data.body);
@@ -81,13 +81,14 @@ class ProposalService {
   }
 
   Future<Voteability> checkVoteability(String proposalId, String account) async {
-    var apiUrl = await loadInterxURL();
-    var data = await http.get(apiUrl[0] + "/kira/gov/voters/$proposalId",
-        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var apiUrl = await getLiveRpcUrl();
+    var data =
+        await http.get(apiUrl[0] + "/kira/gov/voters/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     var actors = bodyData as List<dynamic>;
-    var selfActor = actors.firstWhere((voter) => (voter as Map<String, dynamic>)['address'] == account, orElse: () => null);
+    var selfActor =
+        actors.firstWhere((voter) => (voter as Map<String, dynamic>)['address'] == account, orElse: () => null);
     return parse(selfActor, actors.length);
   }
 
@@ -104,13 +105,14 @@ class ProposalService {
     }
     var whitelist = (jsonData['permissions']['whitelist'] as List<dynamic>).map((e) => e.toString()).toList();
     var blacklist = (jsonData['permissions']['blacklist'] as List<dynamic>).map((e) => e.toString()).toList();
-    return Voteability(voteOptions: options, whitelistPermissions: whitelist, blacklistPermissions: blacklist, count: count);
+    return Voteability(
+        voteOptions: options, whitelistPermissions: whitelist, blacklistPermissions: blacklist, count: count);
   }
 
   Future<Map> getVoteResult(String proposalId) async {
-    var apiUrl = await loadInterxURL();
-    var data = await http.get(apiUrl[0] + "/kira/gov/votes/$proposalId",
-        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var apiUrl = await getLiveRpcUrl();
+    var data =
+        await http.get(apiUrl[0] + "/kira/gov/votes/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     var votes = bodyData as List<dynamic>;

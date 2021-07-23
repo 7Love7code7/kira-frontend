@@ -4,15 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/utils/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/models/export.dart';
 
 class HamburgerDrawer extends StatefulWidget {
-  final bool isNetworkHealthy;
-
   HamburgerDrawer({
     Key key,
-    this.isNetworkHealthy,
   }) : super(key: key);
 
   @override
@@ -20,13 +17,13 @@ class HamburgerDrawer extends StatefulWidget {
 }
 
 class _HamburgerDrawerState extends State<HamburgerDrawer> {
-  StatusService statusService = StatusService();
   final List _isHovering = [false, false, false, false, false, false];
-
-  // String networkId = Strings.noAvailableNetworks;
 
   String navParam = "";
   bool isLoggedIn = false;
+  String networkId = Strings.noAvailableNetworks;
+  String rpcUrl;
+  bool isNetworkHealthy;
 
   @override
   void initState() {
@@ -34,15 +31,31 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
     getNodeStatus();
     getLoginStatus().then((loggedIn) => this.setState(() {
-      isLoggedIn = loggedIn;
-    }));
+          isLoggedIn = loggedIn;
+        }));
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    var apiUrl = await getLiveRpcUrl();
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+
+    if (mounted) {
+      setState(() {
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
+          networkId = nodeInfo.network;
+          rpcUrl = getIPOnly(apiUrl[0]);
+          isNetworkHealthy = networkHealth;
+        } else {
+          isNetworkHealthy = false;
+        }
+      });
+    }
+
+    setState(() {});
+
     String lastSearchedAccount = await getLastSearchedAccount();
-    if (lastSearchedAccount.isNotEmpty)
-      navParam = "&addr=" + lastSearchedAccount;
+    if (lastSearchedAccount.isNotEmpty) navParam = "&addr=" + lastSearchedAccount;
   }
 
   List<Widget> navItems() {
@@ -60,7 +73,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
           onTap: () {
             switch (i) {
               case 0: // account
-                Navigator.pushReplacementNamed(context, '/account' + (!isLoggedIn ? '?rpc=${statusService.rpcUrl}$navParam' : ''));
+                Navigator.pushReplacementNamed(context, '/account' + (!isLoggedIn ? '?rpc=${rpcUrl}$navParam' : ''));
                 break;
               case 1: // Deposit
                 Navigator.pushReplacementNamed(context, '/deposit');
@@ -69,10 +82,10 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 Navigator.pushReplacementNamed(context, '/withdraw');
                 break;
               case 3: // Network
-                Navigator.pushReplacementNamed(context, '/network' + (!isLoggedIn ? '?rpc=${statusService.rpcUrl}' : ''));
+                Navigator.pushReplacementNamed(context, '/network' + (!isLoggedIn ? '?rpc=${rpcUrl}' : ''));
                 break;
               case 4: // Proposals
-                Navigator.pushReplacementNamed(context, '/proposals' + (!isLoggedIn ? '?rpc=${statusService.rpcUrl}' : ''));
+                Navigator.pushReplacementNamed(context, '/proposals' + (!isLoggedIn ? '?rpc=${rpcUrl}' : ''));
                 break;
               case 5: // Settings
                 Navigator.pushReplacementNamed(context, isLoggedIn ? '/settings' : '/login');
@@ -119,7 +132,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         },
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
-          child: Text(Strings.logout,
+          child: Text(
+            Strings.logout,
             style: TextStyle(
               fontSize: 14,
               color: Colors.white,
@@ -139,9 +153,11 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         textAlign: TextAlign.center,
       ),
       onPressed: () {
-        BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
+        setNetworkHealth(false);
+        getNodeStatusData("");
         removePassword();
         setInterxRPCUrl("");
+        setLiveRpcUrl("", "");
         Navigator.pushReplacementNamed(context, '/login');
       },
     );
@@ -191,7 +207,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                 ),
                 SizedBox(height: 5),
                 Text(
-                  widget.isNetworkHealthy == true ? "Healthy" : "Unhealthy",
+                  isNetworkHealthy == true ? "Healthy" : "Unhealthy",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 18, color: KiraColors.black),
                 ),
@@ -208,10 +224,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    var networkStatusColor = widget.isNetworkHealthy == true ? KiraColors.green3 : KiraColors.orange3;
-    var networkId = BlocProvider.of<NetworkBloc>(context).state.networkId;
-    var nodeAddress = BlocProvider.of<NetworkBloc>(context).state.nodeAddress;
-    networkId = networkId == null ? Strings.noAvailableNetworks : networkId;
+    var networkStatusColor = isNetworkHealthy == true ? KiraColors.green3 : KiraColors.orange3;
 
     return Drawer(
       elevation: 1,
@@ -250,13 +263,14 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
                   InkWell(
                     // onTap: widget.isNetworkHealthy == null ? () {} : null,
                     onTap: () {
-                      showAvailableNetworks(context, networkId, nodeAddress);
+                      showAvailableNetworks(
+                          context, networkId == null ? Strings.noAvailableNetworks : networkId, rpcUrl);
                     },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          networkId,
+                          networkId == null ? Strings.noAvailableNetworks : networkId,
                           style: TextStyle(
                               fontFamily: 'Mulish',
                               color: Colors.white.withOpacity(0.5),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:kira_auth/models/token.dart';
+import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/config.dart';
 
 class TokenService {
@@ -10,7 +11,7 @@ class TokenService {
   Future<void> getTokens(String address) async {
     List<Token> tokenList = [];
 
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
     var tokenAliases =
         await http.get(apiUrl[0] + "/kira/tokens/aliases", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
@@ -83,7 +84,7 @@ class TokenService {
   }
 
   Future<String> faucet(String address, String token) async {
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
     String url = apiUrl[0] + "/faucet?claim=$address&token=$token";
     String response = "Success!";
@@ -127,7 +128,7 @@ class TokenService {
 
   Future<void> getAvailableFaucetTokens() async {
     List<String> tokenList = [];
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
     var response = await http.get(apiUrl[0] + "/faucet", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var body = json.decode(response.body);

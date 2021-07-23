@@ -23,7 +23,7 @@ class ProposalsScreen extends StatefulWidget {
 
 class _ProposalsScreenState extends State<ProposalsScreen> {
   ProposalService proposalService = ProposalService();
-  StatusService statusService = StatusService();
+
   List<Proposal> proposals = [];
   List<int> voteable = [0, 2];
   String pendingTxHash;
@@ -75,33 +75,24 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
       var uri = Uri.dataFromString(html.window.location.href);
       Map<String, String> params = uri.queryParameters;
       var keyword = query;
-      if (params.containsKey("info"))
-        keyword = params['info'].toLowerCase();
+      if (params.containsKey("info")) keyword = params['info'].toLowerCase();
 
       proposalController.add(keyword);
     });
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
-      });
-    }
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    setState(() {
+      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+    });
   }
 
   void getCachedFeeAmount() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      int cfeeAmount = prefs.getInt('feeAmount');
+      int cfeeAmount = prefs.getInt('FEE_AMOUNT');
       if (cfeeAmount.runtimeType != Null)
         feeAmount = cfeeAmount.toString();
       else
@@ -112,7 +103,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   void getFeeToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      String feeTokenString = prefs.getString('feeToken');
+      String feeTokenString = prefs.getString('FEE_TOKEN');
       if (feeTokenString.runtimeType != Null) {
         feeToken = Token.fromString(feeTokenString);
       } else {
@@ -140,12 +131,15 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
                           children: <Widget>[
                             addHeader(),
                             addTableHeader(),
-                            moreLoading ? addLoadingIndicator() : proposals.isEmpty ? Container(
-                                margin: EdgeInsets.only(top: 20, left: 20),
-                                child: Text("No proposals to show",
-                                    style: TextStyle(
-                                        color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                : addProposalsTable(),
+                            moreLoading
+                                ? addLoadingIndicator()
+                                : proposals.isEmpty
+                                    ? Container(
+                                        margin: EdgeInsets.only(top: 20, left: 20),
+                                        child: Text("No proposals to show",
+                                            style: TextStyle(
+                                                color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                                    : addProposalsTable(),
                           ],
                         ),
                       )));
@@ -171,18 +165,18 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
       margin: EdgeInsets.only(bottom: 40),
       child: ResponsiveWidget.isLargeScreen(context)
           ? Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          addHeaderTitle(),
-          addSearchInput(),
-        ],
-      )
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                addHeaderTitle(),
+                addSearchInput(),
+              ],
+            )
           : Column(
-        children: <Widget>[
-          addHeaderTitle(),
-          addSearchInput(),
-        ],
-      ),
+              children: <Widget>[
+                addHeaderTitle(),
+                addSearchInput(),
+              ],
+            ),
     );
   }
 
@@ -295,30 +289,27 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return CustomDialog(
-            contentWidgets: [
-              Text(Strings.kiraNetwork,
-                style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 15),
-              Text(Strings.loading,
-                  style: TextStyle(fontSize: 20, color: KiraColors.black, fontWeight: FontWeight.w600)),
-              SizedBox(height: 15),
-              TextButton(
-                  onPressed: () async {
-                    cancelTransaction(pendingTxHash);
-                  },
-                  child: SizedBox(
-                      width: 100,
-                      height: 36,
-                      child: Center(
-                          child: Text(
-                            Strings.cancel,
-                            style: TextStyle(fontSize: 14, color: KiraColors.danger),
-                          ))
-                  )),
-            ]
-        );
+        return CustomDialog(contentWidgets: [
+          Text(
+            Strings.kiraNetwork,
+            style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 15),
+          Text(Strings.loading, style: TextStyle(fontSize: 20, color: KiraColors.black, fontWeight: FontWeight.w600)),
+          SizedBox(height: 15),
+          TextButton(
+              onPressed: () async {
+                cancelTransaction(pendingTxHash);
+              },
+              child: SizedBox(
+                  width: 100,
+                  height: 36,
+                  child: Center(
+                      child: Text(
+                    Strings.cancel,
+                    style: TextStyle(fontSize: 14, color: KiraColors.danger),
+                  )))),
+        ]);
       },
     );
   }
@@ -334,10 +325,10 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
     final stdTx = TransactionBuilder.buildStdTx([message], stdFee: fee, memo: 'Cancel transaction');
 
     try {
-      final signedStdTx = await TransactionSigner.signStdTx(currentAccount, stdTx, accountNumber: cancelAccountNumber, sequence: cancelSequence);
+      final signedStdTx = await TransactionSigner.signStdTx(currentAccount, stdTx,
+          accountNumber: cancelAccountNumber, sequence: cancelSequence);
       await TransactionSender.broadcastStdTx(account: currentAccount, stdTx: signedStdTx);
-    } catch (error) {
-    }
+    } catch (error) {}
     cancelAccountNumber = '';
     cancelSequence = '';
   }
@@ -389,35 +380,40 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
       builder: (BuildContext context) {
         return CustomDialog(
           contentWidgets: [
-            Text(Strings.kiraNetwork,
+            Text(
+              Strings.kiraNetwork,
               style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 15),
             Text(voteResult.isEmpty ? Strings.invalidVote : voteResult,
                 style: TextStyle(fontSize: 20), textAlign: TextAlign.center),
             SizedBox(height: 22),
-            (txHash ?? '').isEmpty ? Container() : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                RichText(text: new TextSpan(children: [
-                  new TextSpan(text: 'TxHash: ', style: TextStyle(color: KiraColors.black)),
-                  new TextSpan(
-                      text: '0x$txHash'.replaceRange(7, txHash.length - 3, '....'),
-                      style: TextStyle(color: KiraColors.kPrimaryColor),
-                      recognizer: new TapGestureRecognizer()
-                        ..onTap = () { Navigator.pushReplacementNamed(context, '/transactions/0x$txHash'); }
-                  ),
-                ])),
-                InkWell(
-                  onTap: () {
-                    copyText("0x$txHash");
-                    showToast(Strings.txHashCopied);
-                  },
-                  child: Icon(Icons.copy, size: 20, color: KiraColors.kPrimaryColor),
-                )
-              ],
-            )
+            (txHash ?? '').isEmpty
+                ? Container()
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      RichText(
+                          text: new TextSpan(children: [
+                        new TextSpan(text: 'TxHash: ', style: TextStyle(color: KiraColors.black)),
+                        new TextSpan(
+                            text: '0x$txHash'.replaceRange(7, txHash.length - 3, '....'),
+                            style: TextStyle(color: KiraColors.kPrimaryColor),
+                            recognizer: new TapGestureRecognizer()
+                              ..onTap = () {
+                                Navigator.pushReplacementNamed(context, '/transactions/0x$txHash');
+                              }),
+                      ])),
+                      InkWell(
+                        onTap: () {
+                          copyText("0x$txHash");
+                          showToast(Strings.txHashCopied);
+                        },
+                        child: Icon(Icons.copy, size: 20, color: KiraColors.kPrimaryColor),
+                      )
+                    ],
+                  )
           ],
         );
       },

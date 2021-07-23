@@ -2,11 +2,10 @@
 import 'dart:html' as html;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kira_auth/utils/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/services/export.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -14,7 +13,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  StatusService statusService = StatusService();
   List<String> networkIds = [Strings.customNetwork];
   String networkId = Strings.customNetwork;
   String testedRpcUrl = "";
@@ -58,30 +56,34 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void getNodeStatus(bool inited) async {
+    if (!inited) {
+      await StatusService().getNodeStatus();
+    }
+
+    var rpcUrl = await getLiveRpcUrl();
     if (mounted) {
       try {
-        await statusService.getNodeStatus();
-        // setState(() {
-        testedRpcUrl = statusService.rpcUrl;
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
+        bool networkHealth = await getNetworkHealth();
+        NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
           setState(() {
-            if (!networkIds.contains(statusService.nodeInfo.network)) {
-              networkIds.add(statusService.nodeInfo.network);
+            if (!networkIds.contains(nodeInfo.network)) {
+              networkIds.add(nodeInfo.network);
             }
-            networkId = statusService.nodeInfo.network;
-            isNetworkHealthy = statusService.isNetworkHealthy;
+            networkId = nodeInfo.network;
+            isNetworkHealthy = networkHealth;
+            testedRpcUrl = getIPOnly(rpcUrl[0]);
             isRpcError = false;
           });
-          BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(networkId, testedRpcUrl));
         } else {
           isNetworkHealthy = false;
         }
         isLoading = false;
-        // });
       } catch (e) {
         print("ERROR OCCURED");
         setState(() {
-          testedRpcUrl = statusService.rpcUrl;
+          testedRpcUrl = getIPOnly(rpcUrl[0]);
           isNetworkHealthy = false;
           isLoading = false;
           if (inited == false) isRpcError = true;
@@ -124,7 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (isNetworkHealthy == false && networkId == Strings.customNetwork) addCustomRPC(),
                       if (isLoading == true) addLoadingIndicator(),
                       // addErrorMessage(),
-                      if (networkId == Strings.customNetwork && isNetworkHealthy == false && isLoading == false) addConnectButton(context),
+                      if (networkId == Strings.customNetwork && isNetworkHealthy == false && isLoading == false)
+                        addConnectButton(context),
                       isNetworkHealthy == true && isLoading == false
                           ? Column(
                               children: [
@@ -145,40 +148,49 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Container(
         margin: EdgeInsets.only(bottom: 40),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(
-            headerTitle,
-            textAlign: TextAlign.left,
-            style: TextStyle(color: isRpcError && testedRpcUrl != "" ? KiraColors.danger : KiraColors.white, fontSize: 32, fontWeight: FontWeight.w900),
-          ),
-          if (isRpcError && testedRpcUrl != "") SizedBox(height: 20),
-          if (isRpcError && testedRpcUrl != "")
-            Text(
-              "Node with address " + testedRpcUrl + " could not be reached",
-              textAlign: TextAlign.left,
-              style: TextStyle(color: KiraColors.danger, fontSize: 20, fontWeight: FontWeight.w900),
-            ),
-          SizedBox(height: 20),
-          Text(
-            connected ? Strings.selectLoginOption : Strings.selectFullNode,
-            textAlign: TextAlign.left,
-            style: TextStyle(color: KiraColors.green3, fontSize: 20, fontWeight: FontWeight.w900),
-          ),
-          if (!connected) SizedBox(height: 15),
-          if (!connected)
-            Text(
-              Strings.requireSSL,
-              textAlign: TextAlign.left,
-              style: TextStyle(color: KiraColors.white.withOpacity(0.6), fontSize: 15, fontWeight: FontWeight.w300),
-            )
-        ]));
+        child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                headerTitle,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                    color: isRpcError && testedRpcUrl != "" ? KiraColors.danger : KiraColors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900),
+              ),
+              if (isRpcError && testedRpcUrl != "") SizedBox(height: 20),
+              if (isRpcError && testedRpcUrl != "")
+                Text(
+                  "Node with address " + testedRpcUrl + " could not be reached",
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: KiraColors.danger, fontSize: 20, fontWeight: FontWeight.w900),
+                ),
+              SizedBox(height: 20),
+              Text(
+                connected ? Strings.selectLoginOption : Strings.selectFullNode,
+                textAlign: TextAlign.left,
+                style: TextStyle(color: KiraColors.green3, fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+              if (!connected) SizedBox(height: 15),
+              if (!connected)
+                Text(
+                  Strings.requireSSL,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: KiraColors.white.withOpacity(0.6), fontSize: 15, fontWeight: FontWeight.w300),
+                )
+            ]));
   }
 
   Widget addNetworks(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(bottom: 30),
       child: Container(
-          decoration: BoxDecoration(border: Border.all(width: 2, color: KiraColors.kPurpleColor), color: KiraColors.transparent, borderRadius: BorderRadius.circular(9)),
+          decoration: BoxDecoration(
+              border: Border.all(width: 2, color: KiraColors.kPurpleColor),
+              color: KiraColors.transparent,
+              borderRadius: BorderRadius.circular(9)),
           // dropdown below..
           child: DropdownButtonHideUnderline(
             child: Column(
@@ -207,14 +219,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               networkIds.add(Strings.customNetwork);
                             }
                           });
-                          var nodeAddress = BlocProvider.of<NetworkBloc>(context).state.nodeAddress;
-                          BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(networkId, nodeAddress));
                         }
                       },
                       items: networkIds.map<DropdownMenuItem<String>>((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
-                          child: Container(height: 25, alignment: Alignment.topCenter, child: Text(value, style: TextStyle(color: KiraColors.white, fontSize: 18))),
+                          child: Container(
+                              height: 25,
+                              alignment: Alignment.topCenter,
+                              child: Text(value, style: TextStyle(color: KiraColors.white, fontSize: 18))),
                         );
                       }).toList()),
                 ),
@@ -277,6 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     // String customInterxRPCUrl = rpcUrlController.text;
+    setLiveRpcUrl("", "");
     setInterxRPCUrl(customInterxRPCUrl);
 
     Future.delayed(const Duration(milliseconds: 500), () async {
@@ -361,10 +375,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget addLoginButtonsBig() {
     return Container(
       margin: EdgeInsets.only(bottom: 30),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
-        addLoginWithMnemonicButton(true),
-        addLoginWithKeyFileButton(true),
-      ]),
+      child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            addLoginWithMnemonicButton(true),
+            addLoginWithKeyFileButton(true),
+          ]),
     );
   }
 
@@ -412,15 +429,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget addLoginButtonsSmall() {
     return Container(
       margin: EdgeInsets.only(bottom: 30),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-        // addLoginWithSaifu(false),
-        // SizedBox(height: 30),
-        addLoginWithKeyFileButton(false),
-        SizedBox(height: 30),
-        addLoginWithMnemonicButton(false),
-        SizedBox(height: 30),
-        addLoginWithExplorerButton(false),
-      ]),
+      child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            // addLoginWithSaifu(false),
+            // SizedBox(height: 30),
+            addLoginWithKeyFileButton(false),
+            SizedBox(height: 30),
+            addLoginWithMnemonicButton(false),
+            SizedBox(height: 30),
+            addLoginWithExplorerButton(false),
+          ]),
     );
   }
 

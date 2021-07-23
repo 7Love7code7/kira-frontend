@@ -5,29 +5,30 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/utils/export.dart';
-import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 
 class TopBarContents extends StatefulWidget {
   final double opacity;
   final bool _loggedIn;
-  final bool _isNetworkHealthy;
   final bool _display;
 
-  TopBarContents(this.opacity, this._loggedIn, this._isNetworkHealthy, this._display);
+  TopBarContents(this.opacity, this._loggedIn, this._display);
 
   @override
   _TopBarContentsState createState() => _TopBarContentsState();
 }
 
 class _TopBarContentsState extends State<TopBarContents> {
-  StatusService statusService = StatusService();
   final List _isHovering = [false, false, false, false, false, false, false, false, false, false];
   final List _notSearched = [true, false, false, true, true, true];
 
   bool _isProcessing = false;
   String networkId = Strings.noAvailableNetworks;
+  String nodeAddress;
+  bool _isNetworkHealthy;
   int selectedIndex = 0;
+  String rpcUrl;
   String navParam = "";
 
   @override
@@ -40,14 +41,19 @@ class _TopBarContentsState extends State<TopBarContents> {
     String lastSearchedAccount = await getLastSearchedAccount();
     if (lastSearchedAccount.isNotEmpty) navParam = "&addr=" + lastSearchedAccount;
     selectedIndex = await getTopbarIndex();
-    await statusService.getNodeStatus();
+
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    var apiUrl = await getLiveRpcUrl();
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          networkId = statusService.nodeInfo.network;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
+          networkId = nodeInfo.network;
+          nodeAddress = getIPOnly(apiUrl[0]);
+          _isNetworkHealthy = networkHealth;
+        } else {
+          _isNetworkHealthy = false;
         }
       });
     }
@@ -71,7 +77,7 @@ class _TopBarContentsState extends State<TopBarContents> {
               switch (i) {
                 case 0: // Account
                   Navigator.pushReplacementNamed(
-                      context, '/account' + (!widget._loggedIn ? '?rpc=${statusService.rpcUrl}$navParam' : ''));
+                      context, '/account' + (!widget._loggedIn ? '?rpc=${nodeAddress}$navParam' : ''));
                   break;
                 case 1: // Deposit
                   Navigator.pushReplacementNamed(context, '/deposit');
@@ -81,11 +87,11 @@ class _TopBarContentsState extends State<TopBarContents> {
                   break;
                 case 3: // Network
                   Navigator.pushReplacementNamed(
-                      context, '/network' + (!widget._loggedIn ? '?rpc=${statusService.rpcUrl}' : ''));
+                      context, '/network' + (!widget._loggedIn ? '?rpc=${nodeAddress}' : ''));
                   break;
                 case 4: // Proposals
                   Navigator.pushReplacementNamed(
-                      context, '/proposals' + (!widget._loggedIn ? '?rpc=${statusService.rpcUrl}' : ''));
+                      context, '/proposals' + (!widget._loggedIn ? '?rpc=${nodeAddress}' : ''));
                   break;
                 case 5: // Settings
                   Navigator.pushReplacementNamed(context, widget._loggedIn ? '/settings' : '/login');
@@ -133,9 +139,11 @@ class _TopBarContentsState extends State<TopBarContents> {
         textAlign: TextAlign.center,
       ),
       onPressed: () {
-        BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
+        setNetworkHealth(false);
+        getNodeStatusData("");
         removePassword();
         setInterxRPCUrl("");
+        setLiveRpcUrl("", "");
         Navigator.pushReplacementNamed(context, '/login');
       },
     );
@@ -187,7 +195,7 @@ class _TopBarContentsState extends State<TopBarContents> {
                     style: TextStyle(fontSize: 18, color: KiraColors.blue1, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    widget._isNetworkHealthy == true ? "Healthy" : "Unhealthy",
+                    _isNetworkHealthy == true ? "Healthy" : "Unhealthy",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 18, color: KiraColors.black),
                   ),
@@ -206,10 +214,7 @@ class _TopBarContentsState extends State<TopBarContents> {
   @override
   Widget build(BuildContext context) {
     var screenSize = MediaQuery.of(context).size;
-    var networkStatusColor = widget._isNetworkHealthy == true ? KiraColors.green3 : KiraColors.orange3;
-    var networkId = BlocProvider.of<NetworkBloc>(context).state.networkId;
-    var nodeAddress = BlocProvider.of<NetworkBloc>(context).state.nodeAddress;
-    networkId = networkId == null ? Strings.noAvailableNetworks : networkId;
+    var networkStatusColor = _isNetworkHealthy == true ? KiraColors.green3 : KiraColors.orange3;
 
     return PreferredSize(
       preferredSize: Size(screenSize.width, 1000),
@@ -259,7 +264,7 @@ class _TopBarContentsState extends State<TopBarContents> {
               child: Row(
                 children: [
                   Text(
-                    networkId,
+                    networkId == null ? Strings.noAvailableNetworks : networkId,
                     style: TextStyle(
                         fontFamily: 'Mulish', color: Colors.white.withOpacity(0.5), fontSize: 15, letterSpacing: 1),
                   ),
@@ -305,11 +310,12 @@ class _TopBarContentsState extends State<TopBarContents> {
                       // highlightColor: KiraColors.purple2,
                       onPressed: () {
                         if (widget._loggedIn) {
+                          setNetworkHealth(false);
+                          getNodeStatusData("");
                           removePassword();
+                          setInterxRPCUrl("");
+                          setLiveRpcUrl("", "");
                           Navigator.pushReplacementNamed(context, '/login');
-                        } else {
-                          var nodeAddress = BlocProvider.of<NetworkBloc>(context).state.nodeAddress;
-                          BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, nodeAddress));
                         }
                       },
                       // shape: RoundedRectangleBorder(

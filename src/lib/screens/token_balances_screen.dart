@@ -26,7 +26,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   NetworkService networkService = NetworkService();
 
   TokenService tokenService = TokenService();
-  StatusService statusService = StatusService();
+
   TransactionService transactionService = TransactionService();
   String notification = '';
   String faucetToken;
@@ -123,26 +123,21 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
 
     if (mounted) {
       setState(() {
-        String testedRpcUrl = statusService.rpcUrl;
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
           if (this.customInterxRPCUrl != "") {
             setState(() {
-              if (!networkIds.contains(statusService.nodeInfo.network)) {
-                networkIds.add(statusService.nodeInfo.network);
+              if (!networkIds.contains(nodeInfo.network)) {
+                networkIds.add(nodeInfo.network);
               }
-              networkId = statusService.nodeInfo.network;
-              isNetworkHealthy = statusService.isNetworkHealthy;
+              networkId = nodeInfo.network;
+              isNetworkHealthy = networkHealth;
             });
-            BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(networkId, testedRpcUrl));
             this.customInterxRPCUrl = "";
-          } else {
-            BlocProvider.of<NetworkBloc>(context)
-                .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
           }
           checkAddress();
           getFaucetTokens();
@@ -154,7 +149,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   void getInterxURL() async {
-    apiUrl = await loadInterxURL();
+    apiUrl = await getLiveRpcUrl();
   }
 
   Future<void> checkAddress() async {

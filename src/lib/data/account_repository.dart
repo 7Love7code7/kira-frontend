@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'package:kira_auth/models/network_info.dart';
 import 'package:kira_auth/models/account.dart';
 import 'package:kira_auth/utils/encrypt.dart';
-import 'package:kira_auth/config.dart';
+import 'package:kira_auth/utils/export.dart';
 
 abstract class AccountRepository {
   Future<List<Account>> getAccountsFromCache();
@@ -17,7 +17,7 @@ abstract class AccountRepository {
 class IAccountRepository implements AccountRepository {
   @override
   Future<Account> fakeFetchForTesting() async {
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
     return Future.delayed(Duration(seconds: 5), () {
       return Account(
@@ -34,7 +34,7 @@ class IAccountRepository implements AccountRepository {
   @override
   Future<List<Account>> getAccountsFromCache() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String cachedAccountString = prefs.getString('accounts');
+    String cachedAccountString = prefs.getString('ACCOUNTS');
     List<Account> accounts = [];
 
     var array = cachedAccountString.split('---');
@@ -57,7 +57,7 @@ class IAccountRepository implements AccountRepository {
     List<String> wordList = mnemonic.split(' ');
     List<int> bytes = utf8.encode(password);
 
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
     // Get hash value of password and use it to encrypt mnemonic
     var hashDigest = Blake256().update(bytes).digest();

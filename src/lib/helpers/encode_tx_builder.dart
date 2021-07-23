@@ -1,5 +1,6 @@
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/utils/export.dart';
 
 class EncodeTransactionBuilder {
   static Future<StdEncodeMessage> buildEncodeTx(
@@ -16,17 +17,14 @@ class EncodeTransactionBuilder {
       }
     });
 
-    final CosmosAccount cosmosAccount =
-        await QueryService.getAccountData(account);
+    final CosmosAccount cosmosAccount = await QueryService.getAccountData(account);
 
-    StatusService service = StatusService();
-    await service.getNodeStatus();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
 
-    final stdEncodeTx =
-        StdEncodeTx(msg: messages, fee: stdFee, signatures: null, memo: memo);
+    final stdEncodeTx = StdEncodeTx(msg: messages, fee: stdFee, signatures: null, memo: memo);
 
     return StdEncodeMessage(
-        chainId: service.nodeInfo.network,
+        chainId: nodeInfo.network,
         accountNumber: cosmosAccount.accountNumber,
         sequence: cosmosAccount.sequence,
         tx: stdEncodeTx);

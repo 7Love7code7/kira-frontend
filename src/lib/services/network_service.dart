@@ -22,25 +22,25 @@ class NetworkService {
   Future<void> getValidators() async {
     List<Validator> validatorList = [];
 
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
-    var data = await http.get(apiUrl[0] + "/valopers?offset=$lastOffset&count_total=true", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var data = await http.get(apiUrl[0] + "/valopers?offset=$lastOffset&count_total=true",
+        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     if (!bodyData.containsKey('validators')) return;
     var validators = bodyData['validators'];
 
-    for (int i = 0; i < validators.length; i++)
-      validatorList.add(Validator.fromJson(validators[i]));
+    for (int i = 0; i < validators.length; i++) validatorList.add(Validator.fromJson(validators[i]));
 
     this.validators.addAll(validatorList);
     lastOffset = this.validators.length;
   }
 
   Future<Validator> searchValidator(String proposer) async {
-    var apiUrl = await loadInterxURL();
-    var data = await http.get(apiUrl[0] + "/valopers?proposer=$proposer",
-        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var apiUrl = await getLiveRpcUrl();
+    var data =
+        await http.get(apiUrl[0] + "/valopers?proposer=$proposer", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     if (!bodyData.containsKey("validators")) return null;
@@ -66,16 +66,15 @@ class NetworkService {
   Future<void> getBlocks(bool loadNew) async {
     List<Block> blockList = [];
 
-    var statusService = StatusService();
-    await statusService.getNodeStatus();
+    SyncInfo syncInfo = await getNodeStatusData("SYNC_INFO");
+
     var offset, limit;
     if (loadNew) {
       offset = latestBlockHeight;
-      latestBlockHeight = int.parse(statusService.syncInfo.latestBlockHeight);
+      latestBlockHeight = int.parse(syncInfo.latestBlockHeight);
       limit = latestBlockHeight - offset;
     } else {
-      if (lastBlockOffset == 0)
-        lastBlockOffset = latestBlockHeight = int.parse(statusService.syncInfo.latestBlockHeight);
+      if (lastBlockOffset == 0) lastBlockOffset = latestBlockHeight = int.parse(syncInfo.latestBlockHeight);
       offset = max(lastBlockOffset - PAGE_COUNT, 0);
       limit = lastBlockOffset - offset;
       lastBlockOffset = offset;
@@ -84,8 +83,7 @@ class NetworkService {
 
     var i = 1;
     while (i < limit) {
-      if (!await checkModelExists(ModelType.BLOCK, (offset + i).toString()))
-        break;
+      if (!await checkModelExists(ModelType.BLOCK, (offset + i).toString())) break;
       var block = Block.fromJson(await getModel(ModelType.BLOCK, (offset + i).toString()));
       block.validator = await searchValidator(block.proposerAddress);
       if (block.validator == null) break;
@@ -94,7 +92,7 @@ class NetworkService {
     }
 
     if (i < limit) {
-      var apiUrl = await loadInterxURL();
+      var apiUrl = await getLiveRpcUrl();
       var data = await http.get(apiUrl[0] + '/blocks?minHeight=${offset + i}&maxHeight=${offset + limit}',
           headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
@@ -116,7 +114,7 @@ class NetworkService {
 
   Future<void> searchTransaction(String query) async {
     transaction = null;
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
     var data = await http.get(apiUrl[0] + '/transactions/$query', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var bodyData = json.decode(data.body);
     if (bodyData.containsKey("code")) return;
@@ -126,7 +124,7 @@ class NetworkService {
 
   Future<void> searchBlock(String query) async {
     block = null;
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
     var data = await http.get(apiUrl[0] + '/blocks/$query', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var bodyData = json.decode(data.body);
     if (bodyData.containsKey("code"))
@@ -166,7 +164,7 @@ class NetworkService {
     else {
       List<BlockTransaction> transactionList = [];
 
-      var apiUrl = await loadInterxURL();
+      var apiUrl = await getLiveRpcUrl();
       var data = await http
           .get(apiUrl[0] + '/blocks/$height/transactions', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
       var bodyData = json.decode(data.body);
@@ -178,8 +176,8 @@ class NetworkService {
       }
 
       this.transactions = transactionList;
-      storeModels(ModelType.TRANSACTION, height.toString(),
-          jsonEncode(transactionList.map((e) => e.jsonString).toList()));
+      storeModels(
+          ModelType.TRANSACTION, height.toString(), jsonEncode(transactionList.map((e) => e.jsonString).toList()));
     }
   }
 }

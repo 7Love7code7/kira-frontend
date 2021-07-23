@@ -15,7 +15,12 @@ class StatusService {
   bool isNetworkHealthy = true;
 
   Future<bool> getNodeStatus() async {
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
+
+    if (apiUrl[0].isEmpty) {
+      apiUrl = await loadInterxURL();
+    }
+
     var config = await loadConfig();
     var response;
 
@@ -31,17 +36,22 @@ class StatusService {
           headers: {'Access-Control-Allow-Origin': apiUrl[1]}).timeout(Duration(seconds: 3));
 
       if (response.body.contains('node_info') == false) {
+        setNetworkHealth(false);
         return false;
       }
     }
 
     var bodyData = json.decode(response.body);
-    if (bodyData == null) return false;
+    if (bodyData == null) {
+      setNetworkHealth(false);
+      return false;
+    }
 
     nodeInfo = NodeInfo.fromJson(bodyData['node_info']);
     syncInfo = SyncInfo.fromJson(bodyData['sync_info']);
     validatorInfo = ValidatorInfo.fromJson(bodyData['validator_info']);
 
+    setNodeStatusData(response.body);
     // DateTime latestBlockTime = DateTime.tryParse(syncInfo.latestBlockTime);
     // var timeDifference = (DateTime.now().millisecondsSinceEpoch - latestBlockTime.millisecondsSinceEpoch) / 1000 / 60;
     // print(timeDifference);
@@ -58,6 +68,7 @@ class StatusService {
     // if (bodyData['consensus_stopped'] == true) {
     //   isNetworkHealthy = false;
     // }
+    setNetworkHealth(true);
 
     response = await http.get(apiUrl[0] + '/status', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 

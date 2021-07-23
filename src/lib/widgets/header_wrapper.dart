@@ -7,7 +7,6 @@ import 'package:kira_auth/widgets/top_bar_contents.dart';
 import 'package:kira_auth/utils/responsive.dart';
 import 'package:kira_auth/utils/strings.dart';
 import 'package:kira_auth/utils/colors.dart';
-import 'package:kira_auth/services/status_service.dart';
 import 'package:kira_auth/utils/cache.dart';
 
 class HeaderWrapper extends StatefulWidget {
@@ -20,7 +19,6 @@ class HeaderWrapper extends StatefulWidget {
 }
 
 class _HeaderWrapperState extends State<HeaderWrapper> {
-  StatusService statusService = StatusService();
   ScrollController _scrollController = ScrollController();
   double _scrollPosition = 0;
   double _opacity = 0;
@@ -33,12 +31,13 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
       _scrollPosition = _scrollController.position.pixels;
     });
   }
+
   Future<bool> isUserLoggedIn() async {
     bool isLoggedIn = await getLoginStatus();
 
     return isLoggedIn;
-
   }
+
   @override
   void initState() {
     super.initState();
@@ -48,11 +47,9 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
       setState(() {
         this.display = display;
       });
-
     });
 
     isUserLoggedIn().then((isLoggedIn) {
-
       if (isLoggedIn) {
         checkPasswordExists().then((success) {
           setState(() {
@@ -61,12 +58,10 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
         });
       } else {
         setState(() {
-        _loggedIn = false;
+          _loggedIn = false;
         });
       }
-
     });
-
   }
 
   Widget topBarSmall(BuildContext context) {
@@ -105,7 +100,7 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
 
     return PreferredSize(
       preferredSize: Size(screenSize.width, 1000),
-      child: TopBarContents(_opacity, _loggedIn, widget.isNetworkHealthy, display),
+      child: TopBarContents(_opacity, _loggedIn, display),
     );
   }
 
@@ -176,7 +171,7 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).backgroundColor,
-      drawer: HamburgerDrawer(isNetworkHealthy: widget.isNetworkHealthy),
+      drawer: HamburgerDrawer(),
       body: WebScrollbar(
         color: KiraColors.kYellowColor,
         backgroundColor: Colors.purple.withOpacity(0.3),

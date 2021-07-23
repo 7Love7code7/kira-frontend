@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:kira_auth/models/account.dart';
 import 'package:kira_auth/models/transactions/export.dart';
-import 'package:kira_auth/config.dart';
+import 'package:kira_auth/utils/export.dart';
 
 class EncodeTransactionSender {
   static Future<dynamic> broadcastStdEncodeTx({
@@ -12,7 +12,7 @@ class EncodeTransactionSender {
     @required StdEncodeMessage stdEncodeMsg,
   }) async {
     // Get the endpoint
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
     // Build the request body
     final requestBodyJson = jsonEncode(stdEncodeMsg.toJson());

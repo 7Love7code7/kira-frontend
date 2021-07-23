@@ -24,7 +24,6 @@ class CreateNewAccountScreen extends StatefulWidget {
 }
 
 class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
-  StatusService statusService = StatusService();
   IAccountRepository accountRepository = IAccountRepository();
   bool isNetworkHealthy = false;
   bool passwordsMatch, loading = false, mnemonicShown = false;
@@ -79,19 +78,11 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
-      });
-    }
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    setState(() {
+      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+    });
   }
 
   @override

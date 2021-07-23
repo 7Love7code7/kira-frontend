@@ -18,7 +18,6 @@ class DepositScreen extends StatefulWidget {
 }
 
 class _DepositScreenState extends State<DepositScreen> {
-  StatusService statusService = StatusService();
   GravatarService gravatarService = GravatarService();
   TransactionService transactionService = TransactionService();
 
@@ -68,17 +67,16 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
           networkIds.clear();
-          networkIds.add(statusService.nodeInfo.network);
-          networkId = statusService.nodeInfo.network;
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
+          networkIds.add(nodeInfo.network);
+          networkId = nodeInfo.network;
+          isNetworkHealthy = networkHealth;
         } else {
           isNetworkHealthy = false;
         }

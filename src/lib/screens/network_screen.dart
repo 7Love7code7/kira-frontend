@@ -18,7 +18,7 @@ class NetworkScreen extends StatefulWidget {
 
 class _NetworkScreenState extends State<NetworkScreen> {
   NetworkService networkService = NetworkService();
-  StatusService statusService = StatusService();
+
   List<Validator> validators = [];
   String query = "";
   bool moreLoading = false;
@@ -112,27 +112,22 @@ class _NetworkScreenState extends State<NetworkScreen> {
   }
 
   void getNodeStatus() async {
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    bool networkHealth = await getNetworkHealth();
+
     if (mounted) {
-      await statusService.getNodeStatus();
-
       setState(() {
-        String testedRpcUrl = statusService.rpcUrl;
-
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
+          isNetworkHealthy = networkHealth;
           if (this.customInterxRPCUrl != "") {
             setState(() {
-              if (!networkIds.contains(statusService.nodeInfo.network)) {
-                networkIds.add(statusService.nodeInfo.network);
+              if (!networkIds.contains(nodeInfo.network)) {
+                networkIds.add(nodeInfo.network);
               }
-              networkId = statusService.nodeInfo.network;
-              isNetworkHealthy = statusService.isNetworkHealthy;
+              networkId = nodeInfo.network;
+              isNetworkHealthy = networkHealth;
             });
-            BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(networkId, testedRpcUrl));
             this.customInterxRPCUrl = "";
-          } else {
-            BlocProvider.of<NetworkBloc>(context)
-                .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
           }
         } else {
           isNetworkHealthy = false;

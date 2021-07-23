@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:kira_auth/models/transaction.dart';
-import 'package:kira_auth/config.dart';
 import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/utils/export.dart';
 
 class TransactionService {
   Future<Transaction> getTransaction({hash}) async {
@@ -10,7 +10,7 @@ class TransactionService {
 
     Transaction transaction = Transaction();
 
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
     var response = await http.get(apiUrl[0] + "/cosmos/txs/$hash", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var body = jsonDecode(response.body);
     if (body['message'] == "Internal error") return null;
@@ -44,11 +44,8 @@ class TransactionService {
 
   Future<List<Transaction>> getTransactions({account, max, isWithdrawal, pubKey}) async {
     List<Transaction> transactions = [];
-    StatusService service = StatusService();
 
-    await service.getNodeStatus();
-
-    var apiUrl = await loadInterxURL();
+    List<String> apiUrl = await getLiveRpcUrl();
 
     String url = isWithdrawal == true ? "withdraws" : "deposits";
     String bech32Address = account.bech32Address;

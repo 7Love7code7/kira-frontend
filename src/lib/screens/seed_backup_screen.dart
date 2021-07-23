@@ -22,7 +22,6 @@ class SeedBackupScreen extends StatefulWidget {
 }
 
 class _SeedBackupScreenState extends State<SeedBackupScreen> {
-  StatusService statusService = StatusService();
   Account currentAccount;
   String mnemonic;
   bool seedCopied = false, exportEnabled = false;
@@ -59,19 +58,11 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
-      });
-    }
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    setState(() {
+      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+    });
   }
 
   @override

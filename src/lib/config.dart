@@ -6,7 +6,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:kira_auth/utils/export.dart';
 import 'dart:convert';
 
-Future<List> loadInterxURL() async {
+Future<List<String>> loadInterxURL() async {
   String rpcUrl = await getInterxRPCUrl();
 
   String origin = html.window.location.host + html.window.location.pathname;
@@ -41,6 +41,7 @@ Future<List> loadInterxURL() async {
 
           if (response.body.contains('node_info') == true) {
             isSucceed = true;
+            setLiveRpcUrl(rpcUrl + "/api", origin);
           }
         } catch (e) {
           print(e);
@@ -55,6 +56,7 @@ Future<List> loadInterxURL() async {
             if (response.body.contains('node_info') == true) {
               isSucceed = true;
               rpcUrl = 'https://' + rpcUrl;
+              setLiveRpcUrl(rpcUrl + "/api", origin);
             }
           } catch (e) {
             print(e);
@@ -69,6 +71,7 @@ Future<List> loadInterxURL() async {
               if (response.body.contains('node_info') == true) {
                 isSucceed = true;
                 rpcUrl = 'https://' + rpcUrl + ':11000';
+                setLiveRpcUrl(rpcUrl + "/api", origin);
               }
             } catch (e) {
               print(e);
@@ -83,9 +86,10 @@ Future<List> loadInterxURL() async {
         rpcUrl = rpcUrl + ':11000';
       }
 
-      if (isSucceed == false && ((startsWithHttp && !noHttp) || noHttp)) {
+      if (isSucceed == false && ((startsWithHttp && !noHttp) || noHttp) && rpcUrl.isNotEmpty) {
         rpcUrl = 'http://' + rpcUrl;
         rpcUrl = 'https://cors-anywhere.kira.network/' + rpcUrl;
+        setLiveRpcUrl(rpcUrl + "/api", origin);
       }
     }
 

@@ -4,22 +4,16 @@ import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:jdenticon/jdenticon.dart';
+
 import 'package:kira_auth/helpers/tx_offline_signer.dart';
-import 'package:kira_auth/models/account.dart';
-import 'package:kira_auth/models/token.dart';
-import 'package:kira_auth/models/transaction.dart';
-import 'package:kira_auth/models/transactions/messages/msg_send.dart';
-import 'package:kira_auth/models/transactions/std_coin.dart';
-import 'package:kira_auth/models/transactions/std_fee.dart';
-import 'package:kira_auth/models/transactions/std_public_key.dart';
-import 'package:kira_auth/widgets/signature_dialog.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/helpers/export.dart';
 import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 
 class WithdrawalScreen extends StatefulWidget {
@@ -31,7 +25,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   TokenService tokenService = TokenService();
   GravatarService gravatarService = GravatarService();
   TransactionService transactionService = TransactionService();
-  StatusService statusService = StatusService();
 
   List<Token> tokens = [];
   List<Transaction> transactions = [];
@@ -109,20 +102,11 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
-      });
-    }
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    setState(() {
+      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+    });
   }
 
   void getWithdrawalTransactions() async {
@@ -148,7 +132,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   void getCachedFeeAmount() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      int cfeeAmount = prefs.getInt('feeAmount');
+      int cfeeAmount = prefs.getInt('FEE_AMOUNT');
       if (cfeeAmount.runtimeType != Null)
         feeAmount = cfeeAmount.toString();
       else
@@ -159,7 +143,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   void getFeeToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      String feeTokenString = prefs.getString('feeToken');
+      String feeTokenString = prefs.getString('FEE_TOKEN');
       if (feeTokenString.runtimeType != Null) {
         feeToken = Token.fromString(feeTokenString);
       } else {

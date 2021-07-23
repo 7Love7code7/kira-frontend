@@ -5,8 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/utils/cache.dart';
-import 'package:kira_auth/widgets/header_wrapper.dart';
+import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/config.dart';
 
 class GlobalScreen extends StatefulWidget {
   @override
@@ -16,13 +18,15 @@ class GlobalScreen extends StatefulWidget {
 }
 
 class _GlobalScreenState extends State<GlobalScreen> {
-  String accountId;
-
+  Account currentAccount;
   Timer timer;
 
   @override
   void initState() {
     super.initState();
+
+    fetchData(true);
+    timer = Timer.periodic(Duration(minutes: 2), (Timer t) => {fetchData(false)});
 
     getFeeTokenFromCache();
     getCurrentAccountFromCache();
@@ -34,19 +38,28 @@ class _GlobalScreenState extends State<GlobalScreen> {
         Navigator.pushReplacementNamed(context, '/account');
       }
     });
-
-    timer = Timer.periodic(Duration(minutes: 2), (Timer t) => fetchData());
   }
 
-  void fetchData() async {
-    print("--- SOS ---");
+  void fetchData(bool isFirst) async {
+    if (isFirst) {
+      await StatusService().getNodeStatus();
+    }
+
+    List<String> rpcUrl = await getLiveRpcUrl();
+
+    if (rpcUrl[0].isEmpty) {
+      bool isLoggedIn = await getLoginStatus();
+      if (!isLoggedIn) return;
+      await loadInterxURL();
+    }
+
+    print("--- SOS --- ${rpcUrl[0]}");
   }
 
   void getCurrentAccountFromCache() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    String currentAccountString = prefs.getString('currentAccount');
-    Account currentAccount;
+    String currentAccountString = prefs.getString('CURRENT_ACCOUNT');
 
     if (currentAccountString != null && currentAccountString != "") {
       currentAccount = Account.fromString(currentAccountString);
@@ -61,7 +74,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
   void getFeeTokenFromCache() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    String feeTokenString = prefs.getString('feeToken');
+    String feeTokenString = prefs.getString('FEE_TOKEN');
     Token feeToken;
 
     if (feeTokenString != null && feeTokenString != "") {

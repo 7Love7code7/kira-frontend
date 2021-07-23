@@ -17,7 +17,6 @@ class LoginWithKeyfileScreen extends StatefulWidget {
 }
 
 class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
-  StatusService statusService = StatusService();
   Account account;
   String accountString, fileName, password, error;
   bool imported = false;
@@ -85,17 +84,11 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
     if (mounted) {
+      NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+      bool networkHealth = await getNetworkHealth();
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
+        isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
       });
     }
   }
@@ -285,8 +278,6 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
       account.checksum = decryptAESCryptoJS(account.checksum, secretKey);
       setAccountData(account.toJsonString());
       setPassword(password);
-
-
 
       setLoginStatus(true);
 

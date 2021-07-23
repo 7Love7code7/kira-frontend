@@ -11,7 +11,7 @@ class ITokenRepository implements TokenRepository {
   @override
   Future<Token> getFeeTokenFromCache() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String feeTokenString = prefs.getString('feeToken');
+    String feeTokenString = prefs.getString('FEE_TOKEN');
 
     return Token.fromString(feeTokenString);
   }

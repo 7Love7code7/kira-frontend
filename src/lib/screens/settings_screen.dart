@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:kira_auth/config.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
@@ -20,7 +19,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  StatusService statusService = StatusService();
   TokenService tokenService = TokenService();
   String accountId, feeTokenTicker, notification = '';
   String expireTime = '0', error = '', accountNameError = '', currentPassword = '';
@@ -48,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      String cachedAccountString = prefs.getString('accounts');
+      String cachedAccountString = prefs.getString('ACCOUNTS');
       var array = cachedAccountString.split('---');
 
       for (int index = 0; index < array.length; index++) {
@@ -64,14 +62,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       // Cached password
-      currentPassword = prefs.getString('password');
+      currentPassword = prefs.getString('PASSWORD');
 
       // Password expire time
-      expireTime = (prefs.getInt('expireTime') / 60000).toString();
+      expireTime = (prefs.getInt('EXPIRE_TIME') / 60000).toString();
       expireTimeController.text = expireTime;
 
       // Fee amount
-      int feeAmount = prefs.getInt('feeAmount');
+      int feeAmount = prefs.getInt('FEE_AMOUNT');
       if (feeAmount.runtimeType != Null)
         feeAmountController.text = feeAmount.toString();
       else
@@ -97,26 +95,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void getInterxRPCUrl() async {
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
     String interxUrl = apiUrl[0];
     interxUrl = interxUrl.replaceAll('/api', '');
     rpcUrlController.text = interxUrl;
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
-      });
-    }
+    bool networkHealth = await getNetworkHealth();
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    setState(() {
+      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+    });
   }
 
   @override

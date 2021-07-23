@@ -16,7 +16,6 @@ class LoginWithMnemonicScreen extends StatefulWidget {
 }
 
 class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
-  StatusService statusService = StatusService();
   String cachedAccountString;
   // String password = "";
   String mnemonicError = "";
@@ -32,7 +31,7 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
   void getCachedAccountString() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      cachedAccountString = prefs.getString('accounts');
+      cachedAccountString = prefs.getString('ACCOUNTS');
     });
   }
 
@@ -58,19 +57,11 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
-      });
-    }
+    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    bool networkHealth = await getNetworkHealth();
+    setState(() {
+      isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
+    });
   }
 
   @override
@@ -80,7 +71,7 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
     // // Set password from param
     // if (arguments != null && password == '') {
     //   setState(() {
-    //     password = arguments['password'];
+    //     password = arguments['PASSWORD'];
     //   });
     // }
 

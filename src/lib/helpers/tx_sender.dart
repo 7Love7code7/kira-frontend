@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:kira_auth/models/account.dart';
 import 'package:kira_auth/models/transactions/export.dart';
+import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/config.dart';
 
 class TransactionSender {
@@ -14,7 +15,7 @@ class TransactionSender {
   }) async {
     // final apiUrl = "${account.networkInfo.lcdUrl}/txs";
     // Get the endpoint
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
     // Build the request body
     final requestBody = {"tx": stdTx.toJson(), "mode": mode};
@@ -44,7 +45,7 @@ class TransactionSender {
   }) async {
     // final apiUrl = "${account.networkInfo.lcdUrl}/txs";
     // Get the endpoint
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await getLiveRpcUrl();
 
     // Build the request body
     final requestBody = {"tx": voteTx.toJson(), "mode": mode};
