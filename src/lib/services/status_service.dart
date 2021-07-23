@@ -93,6 +93,7 @@ class StatusService {
     // if (bodyData['consensus_stopped'] == true) {
     //   isNetworkHealthy = false;
     // }
+    setNetworkHealth(true);
 
     response = await http.get(apiUrl[0] + '/status', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
