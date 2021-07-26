@@ -140,7 +140,7 @@ class _TopBarContentsState extends State<TopBarContents> {
       ),
       onPressed: () {
         setNetworkHealth(false);
-        getNodeStatusData("");
+        setNodeStatusData("");
         removePassword();
         setInterxRPCUrl("");
         setLiveRpcUrl("", "");
@@ -311,7 +311,7 @@ class _TopBarContentsState extends State<TopBarContents> {
                       onPressed: () {
                         if (widget._loggedIn) {
                           setNetworkHealth(false);
-                          getNodeStatusData("");
+                          setNodeStatusData("");
                           removePassword();
                           setInterxRPCUrl("");
                           setLiveRpcUrl("", "");
