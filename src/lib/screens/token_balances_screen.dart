@@ -11,7 +11,6 @@ import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:convert/convert.dart';
-import 'package:kira_auth/config.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class TokenBalanceScreen extends StatefulWidget {

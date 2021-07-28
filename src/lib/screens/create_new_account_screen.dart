@@ -13,7 +13,6 @@ import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/blocs/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/data/account_repository.dart';
 
 class CreateNewAccountScreen extends StatefulWidget {

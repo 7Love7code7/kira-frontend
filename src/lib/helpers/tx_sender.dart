@@ -5,7 +5,6 @@ import 'package:meta/meta.dart';
 import 'package:kira_auth/models/account.dart';
 import 'package:kira_auth/models/transactions/export.dart';
 import 'package:kira_auth/utils/export.dart';
-import 'package:kira_auth/config.dart';
 
 class TransactionSender {
   static Future<dynamic> broadcastStdTx({
