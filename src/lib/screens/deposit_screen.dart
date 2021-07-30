@@ -19,7 +19,7 @@ class DepositScreen extends StatefulWidget {
 }
 
 class _DepositScreenState extends State<DepositScreen> {
-  final _gravatarService = getIt<GravatarService>();
+  // final _gravatarService = getIt<GravatarService>();
   final _transactionService = getIt<TransactionService>();
 
   Account currentAccount;
@@ -60,6 +60,7 @@ class _DepositScreenState extends State<DepositScreen> {
   @override
   void dispose() {
     depositController.dispose();
+    transactionsController.close();
     super.dispose();
   }
 

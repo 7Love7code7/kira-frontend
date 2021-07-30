@@ -23,8 +23,8 @@ class WithdrawalScreen extends StatefulWidget {
 }
 
 class _WithdrawalScreenState extends State<WithdrawalScreen> {
+  // final _gravatarService = getIt<GravatarService>();
   final _tokenService = getIt<TokenService>();
-  final _gravatarService = getIt<GravatarService>();
   final _transactionService = getIt<TransactionService>();
 
   List<Token> tokens = [];
@@ -99,6 +99,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     amountController.dispose();
     addressController.dispose();
     memoController.dispose();
+    transactionsController.close();
     super.dispose();
   }
 

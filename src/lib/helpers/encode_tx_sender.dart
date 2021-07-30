@@ -6,7 +6,6 @@ import 'package:kira_auth/models/account.dart';
 import 'package:kira_auth/models/transactions/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
-import 'package:kira_auth/utils/export.dart';
 
 class EncodeTransactionSender {
   static Future<dynamic> broadcastStdEncodeTx({

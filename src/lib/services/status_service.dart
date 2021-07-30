@@ -77,24 +77,6 @@ class StatusService {
     _storageService.setNetworkHealth(true);
     isNetworkHealthy = true;
 
-    // DateTime latestBlockTime = DateTime.tryParse(syncInfo.latestBlockTime);
-    // var timeDifference = (DateTime.now().millisecondsSinceEpoch - latestBlockTime.millisecondsSinceEpoch) / 1000 / 60;
-    // print(timeDifference);
-    // isNetworkHealthy = timeDifference > 1 ? false : true;
-
-    // try {
-    //   response = await http.get(apiUrl[0] + '/consensus',
-    //       headers: {'Access-Control-Allow-Origin': apiUrl[1]}).timeout(Duration(seconds: 3));
-    // } catch (e) {
-    //   return false;
-    // }
-
-    // bodyData = json.decode(response.body);
-    // if (bodyData['consensus_stopped'] == true) {
-    //   isNetworkHealthy = false;
-    // }
-    setNetworkHealth(true);
-
     response = await http.get(apiUrl[0] + '/status', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     if (response.body.contains('interx_info') == false && config[0] == true) {
