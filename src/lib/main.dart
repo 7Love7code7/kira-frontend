@@ -26,6 +26,7 @@ class MyApp extends StatelessWidget {
         providers: [
           BlocProvider<AccountBloc>(create: (context) => AccountBloc(IAccountRepository())),
           BlocProvider<TokenBloc>(create: (context) => TokenBloc(ITokenRepository())),
+          BlocProvider<NetworkBloc>(create: (context) => NetworkBloc()),
           BlocProvider<ValidatorBloc>(create: (context) => ValidatorBloc(IValidatorRepository())),
         ],
         child: MaterialApp(

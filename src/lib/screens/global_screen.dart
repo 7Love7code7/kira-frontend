@@ -47,6 +47,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
     if (isFirst) {
       _statusService.initialize();
       await _statusService.getNodeStatus();
+      BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(_statusService.nodeInfo.network, _statusService.rpcUrl));
     }
 
     List<String> rpcUrl = await _storageService.getLiveRpcUrl();
@@ -56,7 +57,6 @@ class _GlobalScreenState extends State<GlobalScreen> {
       if (!isLoggedIn) return;
       await loadInterxURL();
     }
-
     print("--- SOS --- ${rpcUrl[0]}");
   }
 
