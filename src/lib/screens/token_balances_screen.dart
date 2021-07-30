@@ -362,7 +362,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     }
 
     getInterxURL();
-    getNodeStatus();
+    Future.delayed(const Duration(seconds: 2), getNodeStatus);
     searchController = TextEditingController();
   }
 
