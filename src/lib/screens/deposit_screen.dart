@@ -35,6 +35,8 @@ class _DepositScreenState extends State<DepositScreen> {
   TextEditingController depositController;
   int page = 1;
   StreamController transactionsController = StreamController.broadcast();
+  int sortIndex = 0;
+  bool isAscending = true;
 
   @override
   void initState() {
@@ -135,6 +137,7 @@ class _DepositScreenState extends State<DepositScreen> {
                             addHeaderTitle(),
                             if (currentAccount != null) addGravatar(context),
                             ResponsiveWidget.isSmallScreen(context) ? addInformationSmall() : addInformationBig(),
+                            addTableHeader(),
                             !initialFetched
                                 ? addLoadingIndicator()
                                 : transactions.isEmpty
@@ -173,6 +176,56 @@ class _DepositScreenState extends State<DepositScreen> {
           style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
         ));
   }
+
+  Widget addTableHeader() {
+    List<String> titles = ['Tx Hash', 'Sender', 'Amount', 'Time', 'Status'];
+    List<int> flexes = [2, 2, 1, 1, 1];
+
+    return Container(
+    padding: EdgeInsets.all(5),
+    margin: EdgeInsets.only(top: 30, right: 40, bottom: 20),
+    child: Row(
+    children: titles
+        .asMap()
+        .map(
+    (index, title) => MapEntry(
+    index,
+    Expanded(
+    flex: flexes[index],
+    child: InkWell(
+    onTap: () => this.setState(() {
+    if (sortIndex == index)
+    isAscending = !isAscending;
+    else {
+    sortIndex = index;
+    isAscending = true;
+    }
+    expandedHash = '';
+    refreshTableSort();
+    }),
+    child: Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: sortIndex != index
+    ? [
+    Text(title,
+    style: TextStyle(
+    color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+    ]
+        : [
+    Text(title,
+    style: TextStyle(
+    color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+    SizedBox(width: 5),
+    Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+    color: KiraColors.white),
+    ],
+    )))),
+    )
+        .values
+        .toList(),
+    ),
+    );
+    }
 
   Widget availableNetworks() {
     return Container(
@@ -394,5 +447,20 @@ class _DepositScreenState extends State<DepositScreen> {
             )
           ],
         ));
+  }
+
+  refreshTableSort() {
+    if (sortIndex == 0) {
+      transactions.sort((a, b) => isAscending ? a.hash.compareTo(b.hash) : b.hash.compareTo(a.hash));
+    } else if (sortIndex == 1) {
+      transactions.sort((a, b) => isAscending ? a.sender.compareTo(b.sender) : b.sender.compareTo(a.sender));
+    } else if (sortIndex == 2) {
+      transactions.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+    } else if (sortIndex == 3) {
+      transactions.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
+    } else {
+      transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+    }
+    transactionsController.add(null);
   }
 }
