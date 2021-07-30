@@ -14,6 +14,7 @@ import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/helpers/export.dart';
 import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 import 'package:kira_auth/blocs/export.dart';
 
 class WithdrawalScreen extends StatefulWidget {
@@ -22,9 +23,9 @@ class WithdrawalScreen extends StatefulWidget {
 }
 
 class _WithdrawalScreenState extends State<WithdrawalScreen> {
-  TokenService tokenService = TokenService();
-  GravatarService gravatarService = GravatarService();
-  TransactionService transactionService = TransactionService();
+  final _tokenService = getIt<TokenService>();
+  final _gravatarService = getIt<GravatarService>();
+  final _transactionService = getIt<TransactionService>();
 
   List<Token> tokens = [];
   List<Transaction> transactions = [];
@@ -102,8 +103,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   void getNodeStatus() async {
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
     setState(() {
       isNetworkHealthy = nodeInfo == null ? false : networkHealth;
     });
@@ -112,7 +115,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   void getWithdrawalTransactions() async {
     if (currentAccount != null) {
       List<Transaction> wTxs =
-          await transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: true);
+          await _transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: true);
 
       setState(() {
         transactions = wTxs;
@@ -122,7 +125,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   void getNewTransaction(hash) async {
-    Transaction tx = await transactionService.getTransaction(hash: hash);
+    Transaction tx = await _transactionService.getTransaction(hash: hash);
     tx.isNew = true;
     setState(() {
       transactions.add(tx);
@@ -162,10 +165,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   void getTokens() async {
     if (currentAccount != null && mounted) {
-      await tokenService.getTokens(currentAccount.bech32Address);
+      await _tokenService.getTokens(currentAccount.bech32Address);
 
       setState(() {
-        tokens = tokenService.tokens;
+        tokens = _tokenService.tokens;
         currentToken = tokens.length > 0 ? tokens[0] : null;
         amountInterval = currentToken != null && currentToken.balance != 0 ? currentToken.balance / 100 : 0;
       });
@@ -174,7 +177,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
+    final _storageService = getIt<StorageService>();
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       }
@@ -446,7 +450,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   Widget addGravatar(BuildContext context) {
-    // final String gravatar = gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
+    // final String gravatar = _gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
 
     final String reducedAddress =
         currentAccount.bech32Address.replaceRange(10, currentAccount.bech32Address.length - 7, '....');

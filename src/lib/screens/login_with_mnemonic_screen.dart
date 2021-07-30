@@ -8,6 +8,8 @@ import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class LoginWithMnemonicScreen extends StatefulWidget {
   @override
@@ -56,8 +58,15 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
   }
 
   void getNodeStatus() async {
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
-    bool networkHealth = await getNetworkHealth();
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
     setState(() {
       isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
     });
@@ -253,9 +262,10 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
         if (account.encryptedMnemonic == mnemonic) {
           BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(account));
           BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(account.hexAddress));
-          setPassword('12345678');
 
-          setLoginStatus(true);
+          final _storageService = getIt<StorageService>();
+          _storageService.setPassword('12345678');
+          _storageService.setLoginStatus(true);
 
           Navigator.pushReplacementNamed(context, '/account');
           accountFound = true;

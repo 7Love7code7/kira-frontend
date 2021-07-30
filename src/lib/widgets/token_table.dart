@@ -8,6 +8,7 @@ import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class TokenTable extends StatefulWidget {
   final List<Token> tokens;
@@ -37,7 +38,7 @@ class TokenTable extends StatefulWidget {
 
 class TokenTableState extends State<TokenTable> {
   List<ExpandableController> controllers = List.filled(PAGE_COUNT, null);
-  TokenService tokenService = TokenService();
+  final _tokenService = getIt<TokenService>();
   bool isLoading = false;
   int startAt;
   int endAt;
@@ -336,7 +337,7 @@ class TokenTableState extends State<TokenTable> {
                           setState(() {
                             isLoading = true;
                           });
-                          String result = await tokenService.faucet(widget.address, token.denomination);
+                          String result = await _tokenService.faucet(widget.address, token.denomination);
                           setState(() {
                             isLoading = false;
                           });

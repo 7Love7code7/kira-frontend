@@ -9,6 +9,8 @@ import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class LoginWithKeyfileScreen extends StatefulWidget {
   @override
@@ -84,8 +86,15 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
 
   void getNodeStatus() async {
     if (mounted) {
-      NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
-      bool networkHealth = await getNetworkHealth();
+      final _statusService = getIt<StatusService>();
+      bool networkHealth = _statusService.isNetworkHealthy;
+      NodeInfo nodeInfo = _statusService.nodeInfo;
+
+      if (nodeInfo == null) {
+        final _storageService = getIt<StorageService>();
+        nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+      }
+
       setState(() {
         isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
       });
@@ -275,10 +284,11 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
 
       account.encryptedMnemonic = decryptAESCryptoJS(account.encryptedMnemonic, secretKey);
       account.checksum = decryptAESCryptoJS(account.checksum, secretKey);
-      setAccountData(account.toJsonString());
-      setPassword(password);
 
-      setLoginStatus(true);
+      final _storageService = getIt<StorageService>();
+      _storageService.setAccountData(account.toJsonString());
+      _storageService.setPassword(password);
+      _storageService.setLoginStatus(true);
 
       Navigator.pushReplacementNamed(context, '/account');
     } else {

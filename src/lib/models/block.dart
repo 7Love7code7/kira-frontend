@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:date_time_format/date_time_format.dart';
 import 'package:kira_auth/models/export.dart';
-import 'package:kira_auth/services/gravatar_service.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class Block {
@@ -25,30 +26,31 @@ class Block {
   final int txAmount;
   final String jsonString;
   Validator validator;
+  final _gravatarService = getIt<GravatarService>();
 
   String get getHash => '0x$hash';
   String get getReducedHash => '0x$hash'.replaceRange(7, hash.length - 3, '....');
   String get getProposer => validator != null ? validator.moniker : "";
-  String get getProposerIcon => GravatarService().getIdenticon(validator != null ? validator.address : "");
+  String get getProposerIcon => _gravatarService.getIdenticon(validator != null ? validator.address : "");
 
   Block(
       {this.blockSize = 0,
-        this.hash = "",
-        this.appHash = "",
-        this.chainId = "",
-        this.consensusHash = "",
-        this.dataHash = "",
-        this.evidenceHash = "",
-        this.height = 0,
-        this.lastCommitHash = "",
-        this.lastResultsHash = "",
-        this.validator,
-        this.nextValidatorsHash = "",
-        this.proposerAddress = "",
-        this.time,
-        this.validatorsHash = "",
-        this.txAmount = 0,
-        this.jsonString = ""}) {
+      this.hash = "",
+      this.appHash = "",
+      this.chainId = "",
+      this.consensusHash = "",
+      this.dataHash = "",
+      this.evidenceHash = "",
+      this.height = 0,
+      this.lastCommitHash = "",
+      this.lastResultsHash = "",
+      this.validator,
+      this.nextValidatorsHash = "",
+      this.proposerAddress = "",
+      this.time,
+      this.validatorsHash = "",
+      this.txAmount = 0,
+      this.jsonString = ""}) {
     assert(this.blockSize != null ||
         this.hash != null ||
         this.appHash != null ||

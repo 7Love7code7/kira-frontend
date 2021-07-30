@@ -12,6 +12,7 @@ import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class BlocksScreen extends StatefulWidget {
   @override
@@ -19,7 +20,7 @@ class BlocksScreen extends StatefulWidget {
 }
 
 class _BlocksScreenState extends State<BlocksScreen> {
-  NetworkService networkService = NetworkService();
+  final _networkService = getIt<NetworkService>();
 
   List<Block> blocks = [];
   Block filteredBlock;
@@ -42,12 +43,14 @@ class _BlocksScreenState extends State<BlocksScreen> {
   String testedRpcUrl = "";
   String customInterxRPCUrl = "";
 
+  final _storageService = getIt<StorageService>();
+
   @override
   void initState() {
     super.initState();
 
-    setTopbarIndex(3);
-    setTopBarStatus(true);
+    _storageService.setTopbarIndex(3);
+    _storageService.setTopBarStatus(true);
 
     var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
     Map<String, String> params = uri.queryParameters; // query parameters automatically populated
@@ -57,11 +60,11 @@ class _BlocksScreenState extends State<BlocksScreen> {
       setState(() {
         isNetworkHealthy = false;
       });
-      setInterxRPCUrl(customInterxRPCUrl);
+      _storageService.setInterxRPCUrl(customInterxRPCUrl);
     } else {
-      getLoginStatus().then((isLoggedIn) {
+      _storageService.getLoginStatus().then((isLoggedIn) {
         if (isLoggedIn) {
-          checkPasswordExpired().then((success) {
+          _storageService.checkPasswordExpired().then((success) {
             if (success) {
               Navigator.pushReplacementNamed(context, '/login');
             }
@@ -80,8 +83,13 @@ class _BlocksScreenState extends State<BlocksScreen> {
 
   void getNodeStatus() async {
     if (mounted) {
-      NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
-      bool networkHealth = await getNetworkHealth();
+      final _statusService = getIt<StatusService>();
+      bool networkHealth = _statusService.isNetworkHealthy;
+      NodeInfo nodeInfo = _statusService.nodeInfo;
+
+      if (nodeInfo == null) {
+        nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+      }
 
       setState(() {
         if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
@@ -115,11 +123,11 @@ class _BlocksScreenState extends State<BlocksScreen> {
     setState(() {
       moreLoading = !loadNew;
     });
-    await networkService.getBlocks(loadNew);
+    await _networkService.getBlocks(loadNew);
     setState(() {
       moreLoading = false;
       blocks.clear();
-      blocks.addAll(networkService.blocks);
+      blocks.addAll(_networkService.blocks);
       blockController.add(null);
     });
   }
@@ -399,20 +407,20 @@ class _BlocksScreenState extends State<BlocksScreen> {
                       });
                   return;
                 }
-                networkService.searchBlock(query).then((v) {
+                _networkService.searchBlock(query).then((v) {
                   this.setState(() {
                     filteredTransactions.clear();
-                    filteredTransactions.addAll(networkService.transactions);
-                    filteredBlock = networkService.block;
+                    filteredTransactions.addAll(_networkService.transactions);
+                    filteredBlock = _networkService.block;
                     filteredTransaction = null;
                     searchSubmitted = true;
                   });
                 }).catchError((e) => {
-                      networkService.searchTransaction(query).then((v) {
+                      _networkService.searchTransaction(query).then((v) {
                         this.setState(() {
                           filteredTransactions.clear();
                           filteredBlock = null;
-                          filteredTransaction = networkService.transaction;
+                          filteredTransaction = _networkService.transaction;
                           searchSubmitted = true;
                         });
                       })
@@ -436,20 +444,20 @@ class _BlocksScreenState extends State<BlocksScreen> {
           });
       return;
     }
-    networkService.searchBlock(query).then((v) {
+    _networkService.searchBlock(query).then((v) {
       this.setState(() {
         filteredTransactions.clear();
-        filteredTransactions.addAll(networkService.transactions);
-        filteredBlock = networkService.block;
+        filteredTransactions.addAll(_networkService.transactions);
+        filteredBlock = _networkService.block;
         filteredTransaction = null;
         searchSubmitted = true;
       });
     }).catchError((e) => {
-          networkService.searchTransaction(query).then((v) {
+          _networkService.searchTransaction(query).then((v) {
             this.setState(() {
               filteredTransactions.clear();
               filteredBlock = null;
-              filteredTransaction = networkService.transaction;
+              filteredTransaction = _networkService.transaction;
               searchSubmitted = true;
             });
           })
@@ -468,7 +476,7 @@ class _BlocksScreenState extends State<BlocksScreen> {
               setPage: (newPage) => this.setState(() {
                 page = newPage;
               }),
-              totalPages: (networkService.latestBlockHeight / PAGE_COUNT).ceil(),
+              totalPages: (_networkService.latestBlockHeight / PAGE_COUNT).ceil(),
               loadMore: () => getBlocks(false),
               blocks: blocks,
               expandedHeight: expandedHeight,
@@ -480,11 +488,11 @@ class _BlocksScreenState extends State<BlocksScreen> {
                     transactions.clear();
                   })
                 else
-                  networkService.getTransactions(height).then((v) => {
+                  _networkService.getTransactions(height).then((v) => {
                         this.setState(() {
                           expandedHeight = height;
                           transactions.clear();
-                          transactions.addAll(networkService.transactions);
+                          transactions.addAll(_networkService.transactions);
                         })
                       })
               },

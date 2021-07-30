@@ -5,17 +5,34 @@ import 'package:http/http.dart' as http;
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/config.dart';
 import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class StatusService {
   NodeInfo nodeInfo;
   SyncInfo syncInfo;
   ValidatorInfo validatorInfo;
+  bool isNetworkHealthy = true;
   String interxPubKey;
   String rpcUrl = "";
-  bool isNetworkHealthy = true;
+
+  final _storageService = getIt<StorageService>();
+
+  Future<void> initialize() async {
+    var networkHealth = await _storageService.getNetworkHealth();
+    print("NETWORK HEALTH: ${networkHealth}");
+    isNetworkHealthy = (networkHealth == null) ? false : networkHealth;
+    nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    syncInfo = await _storageService.getNodeStatusData("SYNC_INFO");
+    validatorInfo = await _storageService.getNodeStatusData("VALIDATOR_INFO");
+  }
+
+  void dispose() {
+    _storageService.setNetworkHealth(isNetworkHealthy);
+  }
 
   Future<bool> getNodeStatus() async {
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     if (apiUrl[0].isEmpty) {
       apiUrl = await loadInterxURL();
@@ -36,14 +53,16 @@ class StatusService {
           headers: {'Access-Control-Allow-Origin': apiUrl[1]}).timeout(Duration(seconds: 3));
 
       if (response.body.contains('node_info') == false) {
-        setNetworkHealth(false);
+        isNetworkHealthy = false;
+        _storageService.setNetworkHealth(false);
         return false;
       }
     }
 
     var bodyData = json.decode(response.body);
     if (bodyData == null) {
-      setNetworkHealth(false);
+      isNetworkHealthy = false;
+      _storageService.setNetworkHealth(false);
       return false;
     }
 
@@ -51,7 +70,10 @@ class StatusService {
     syncInfo = SyncInfo.fromJson(bodyData['sync_info']);
     validatorInfo = ValidatorInfo.fromJson(bodyData['validator_info']);
 
-    setNodeStatusData(response.body);
+    _storageService.setNodeStatusData(response.body);
+    _storageService.setNetworkHealth(true);
+    isNetworkHealthy = true;
+
     // DateTime latestBlockTime = DateTime.tryParse(syncInfo.latestBlockTime);
     // var timeDifference = (DateTime.now().millisecondsSinceEpoch - latestBlockTime.millisecondsSinceEpoch) / 1000 / 60;
     // print(timeDifference);
@@ -68,7 +90,6 @@ class StatusService {
     // if (bodyData['consensus_stopped'] == true) {
     //   isNetworkHealthy = false;
     // }
-    setNetworkHealth(true);
 
     response = await http.get(apiUrl[0] + '/status', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
@@ -86,7 +107,7 @@ class StatusService {
   }
 
   Future<bool> checkNodeStatus() async {
-    String apiUrl = await getInterxRPCUrl();
+    String apiUrl = await _storageService.getInterxRPCUrl();
     apiUrl = apiUrl.replaceAll('http://', '');
     apiUrl = apiUrl.replaceAll('https://', '');
 
@@ -97,7 +118,7 @@ class StatusService {
         headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
 
     if (response.body.contains('node_info') == true) {
-      setInterxRPCUrl(apiUrl);
+      _storageService.setInterxRPCUrl(apiUrl);
       print("1");
       return true;
     }
@@ -106,7 +127,7 @@ class StatusService {
         headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
 
     if (response.body.contains('node_info') == true) {
-      setInterxRPCUrl('https://' + apiUrl);
+      _storageService.setInterxRPCUrl('https://' + apiUrl);
       print("2");
       return true;
     }
@@ -115,7 +136,7 @@ class StatusService {
         headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
 
     if (response.body.contains('node_info') == true) {
-      setInterxRPCUrl('https://cors-anywhere.kira.network/http://' + apiUrl);
+      _storageService.setInterxRPCUrl('https://cors-anywhere.kira.network/http://' + apiUrl);
       print("3");
       return true;
     }
@@ -124,7 +145,7 @@ class StatusService {
         headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
 
     if (response.body.contains('node_info') == true) {
-      setInterxRPCUrl('https://cors-anywhere.kira.network/http://' + apiUrl + ':11000');
+      _storageService.setInterxRPCUrl('https://cors-anywhere.kira.network/http://' + apiUrl + ':11000');
       print("4");
       return true;
     }

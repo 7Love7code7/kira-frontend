@@ -4,10 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kira_auth/models/export.dart';
-import 'package:kira_auth/utils/cache.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/service_manager.dart';
 import 'package:kira_auth/config.dart';
 
 class GlobalScreen extends StatefulWidget {
@@ -18,6 +18,9 @@ class GlobalScreen extends StatefulWidget {
 }
 
 class _GlobalScreenState extends State<GlobalScreen> {
+  final _statusService = getIt<StatusService>();
+  final _storageService = getIt<StorageService>();
+
   Account currentAccount;
   Timer timer;
 
@@ -31,7 +34,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
     getFeeTokenFromCache();
     getCurrentAccountFromCache();
 
-    checkPasswordExpired().then((success) {
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       } else {
@@ -42,13 +45,14 @@ class _GlobalScreenState extends State<GlobalScreen> {
 
   void fetchData(bool isFirst) async {
     if (isFirst) {
-      await StatusService().getNodeStatus();
+      _statusService.initialize();
+      await _statusService.getNodeStatus();
     }
 
-    List<String> rpcUrl = await getLiveRpcUrl();
+    List<String> rpcUrl = await _storageService.getLiveRpcUrl();
 
     if (rpcUrl[0].isEmpty) {
-      bool isLoggedIn = await getLoginStatus();
+      bool isLoggedIn = await _storageService.getLoginStatus();
       if (!isLoggedIn) return;
       await loadInterxURL();
     }

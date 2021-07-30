@@ -3,10 +3,10 @@ import 'package:blake_hash/blake_hash.dart';
 import 'package:bip39/bip39.dart' as bip39;
 import 'dart:convert';
 
-import 'package:kira_auth/models/network_info.dart';
-import 'package:kira_auth/models/account.dart';
-import 'package:kira_auth/utils/encrypt.dart';
+import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 abstract class AccountRepository {
   Future<List<Account>> getAccountsFromCache();
@@ -15,9 +15,11 @@ abstract class AccountRepository {
 }
 
 class IAccountRepository implements AccountRepository {
+  final _storageService = getIt<StorageService>();
+
   @override
   Future<Account> fakeFetchForTesting() async {
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     return Future.delayed(Duration(seconds: 5), () {
       return Account(
@@ -57,7 +59,7 @@ class IAccountRepository implements AccountRepository {
     List<String> wordList = mnemonic.split(' ');
     List<int> bytes = utf8.encode(password);
 
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     // Get hash value of password and use it to encrypt mnemonic
     var hashDigest = Blake256().update(bytes).digest();

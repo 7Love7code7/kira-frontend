@@ -3,14 +3,17 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class ProposalService {
+  final _storageService = getIt<StorageService>();
   List<Proposal> proposals = [];
   int totalCount = 0;
   int lastOffset = 0;
 
   Future<void> getProposalsCount() async {
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     var data = await http
         .get(apiUrl[0] + "/kira/gov/proposals?count_total=true", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
@@ -23,7 +26,7 @@ class ProposalService {
   Future<void> getProposals(bool loadNew, {String account = ''}) async {
     List<Proposal> proposalList = [];
 
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     var offset, limit;
     if (loadNew) {
       offset = totalCount;
@@ -42,8 +45,8 @@ class ProposalService {
 
     var k = 0;
     while (k < limit) {
-      if (!await checkModelExists(ModelType.PROPOSAL, (offset + k).toString())) break;
-      var proposal = Proposal.fromJson(await getModel(ModelType.PROPOSAL, (offset + k).toString()));
+      if (!await _storageService.checkModelExists(ModelType.PROPOSAL, (offset + k).toString())) break;
+      var proposal = Proposal.fromJson(await _storageService.getModel(ModelType.PROPOSAL, (offset + k).toString()));
       proposal.voteability = await checkVoteability(proposal.proposalId, account);
       proposal.voteResults = await getVoteResult(proposal.proposalId);
       proposalList.add(proposal);
@@ -64,7 +67,7 @@ class ProposalService {
         proposal.voteability = await checkVoteability(proposal.proposalId, account);
         proposal.voteResults = await getVoteResult(proposal.proposalId);
         proposalList.add(proposal);
-        storeModels(ModelType.PROPOSAL, proposal.proposalId, proposal.jsonString);
+        _storageService.storeModels(ModelType.PROPOSAL, proposal.proposalId, proposal.jsonString);
       }
     }
 
@@ -80,7 +83,7 @@ class ProposalService {
   }
 
   Future<Voteability> checkVoteability(String proposalId, String account) async {
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     var data =
         await http.get(apiUrl[0] + "/kira/gov/voters/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
@@ -109,7 +112,7 @@ class ProposalService {
   }
 
   Future<Map> getVoteResult(String proposalId) async {
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     var data =
         await http.get(apiUrl[0] + "/kira/gov/votes/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 

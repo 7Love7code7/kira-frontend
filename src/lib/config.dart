@@ -1,13 +1,17 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:async' show Future;
-import 'package:http/http.dart' as http;
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:kira_auth/utils/export.dart';
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
+
 Future<List<String>> loadInterxURL() async {
-  String rpcUrl = await getInterxRPCUrl();
+  final _storageService = getIt<StorageService>();
+
+  String rpcUrl = await _storageService.getInterxRPCUrl();
 
   String origin = html.window.location.host + html.window.location.pathname;
   origin = origin.replaceAll('/', '');
@@ -41,7 +45,7 @@ Future<List<String>> loadInterxURL() async {
 
           if (response.body.contains('node_info') == true) {
             isSucceed = true;
-            setLiveRpcUrl(rpcUrl + "/api", origin);
+            _storageService.setLiveRpcUrl(rpcUrl + "/api", origin);
           }
         } catch (e) {
           print(e);
@@ -56,7 +60,7 @@ Future<List<String>> loadInterxURL() async {
             if (response.body.contains('node_info') == true) {
               isSucceed = true;
               rpcUrl = 'https://' + rpcUrl;
-              setLiveRpcUrl(rpcUrl + "/api", origin);
+              _storageService.setLiveRpcUrl(rpcUrl + "/api", origin);
             }
           } catch (e) {
             print(e);
@@ -71,7 +75,7 @@ Future<List<String>> loadInterxURL() async {
               if (response.body.contains('node_info') == true) {
                 isSucceed = true;
                 rpcUrl = 'https://' + rpcUrl + ':11000';
-                setLiveRpcUrl(rpcUrl + "/api", origin);
+                _storageService.setLiveRpcUrl(rpcUrl + "/api", origin);
               }
             } catch (e) {
               print(e);
@@ -89,7 +93,7 @@ Future<List<String>> loadInterxURL() async {
       if (isSucceed == false && ((startsWithHttp && !noHttp) || noHttp) && rpcUrl.isNotEmpty) {
         rpcUrl = 'http://' + rpcUrl;
         rpcUrl = 'https://cors-anywhere.kira.network/' + rpcUrl;
-        setLiveRpcUrl(rpcUrl + "/api", origin);
+        _storageService.setLiveRpcUrl(rpcUrl + "/api", origin);
       }
     }
 
@@ -100,12 +104,14 @@ Future<List<String>> loadInterxURL() async {
 }
 
 Future<List> loadConfig() async {
+  final _storageService = getIt<StorageService>();
+
   String config = await rootBundle.loadString('assets/config.json');
   bool autoConnect = json.decode(config)['autoconnect'];
   List<String> rpcUrls = json.decode(config)['api_url'].cast<String>();
 
   var rpcUrl = rpcUrls[0];
-  if (autoConnect == true) await setInterxRPCUrl(rpcUrl);
+  if (autoConnect == true) await _storageService.setInterxRPCUrl(rpcUrl);
 
   if (rpcUrl.contains('http://') == false) {
     return [autoConnect, "http://" + rpcUrl + '/api'];

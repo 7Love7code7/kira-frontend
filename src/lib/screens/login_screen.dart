@@ -6,6 +6,7 @@ import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -22,6 +23,8 @@ class _LoginScreenState extends State<LoginScreen> {
   FocusNode rpcUrlNode;
   TextEditingController rpcUrlController;
 
+  final _storageService = getIt<StorageService>();
+
   @override
   void initState() {
     super.initState();
@@ -34,8 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
       onConnectPressed(rpcURL);
     }
 
-    setTopBarStatus(false);
-    setLoginStatus(false);
+    _storageService.setTopBarStatus(false);
+    _storageService.setLoginStatus(false);
     rpcUrlNode = FocusNode();
     rpcUrlController = TextEditingController();
     getNodeStatus(true);
@@ -43,9 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void initializeValues() {
-    setLastSearchedAccount("");
-    setTopbarIndex(0);
-    setTabIndex(0);
+    _storageService.setLastSearchedAccount("");
+    _storageService.setTopbarIndex(0);
+    _storageService.setTabIndex(0);
   }
 
   @override
@@ -56,15 +59,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void getNodeStatus(bool inited) async {
+    final _statusService = getIt<StatusService>();
+
     if (!inited) {
-      await StatusService().getNodeStatus();
+      await _statusService.getNodeStatus();
     }
 
-    var rpcUrl = await getLiveRpcUrl();
+    var rpcUrl = await _storageService.getLiveRpcUrl();
+
     if (mounted) {
       try {
-        bool networkHealth = await getNetworkHealth();
-        NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+        bool networkHealth = _statusService.isNetworkHealthy;
+        NodeInfo nodeInfo = _statusService.nodeInfo;
 
         if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
           setState(() {
@@ -100,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       rpcUrlController.text = "";
       String customInterxRPCUrl = rpcUrlController.text;
-      setInterxRPCUrl(customInterxRPCUrl);
+      _storageService.setInterxRPCUrl(customInterxRPCUrl);
       // Future.delayed(const Duration(milliseconds: 500), () async {
       //   checkNodeStatus();
       // });
@@ -290,8 +296,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     // String customInterxRPCUrl = rpcUrlController.text;
-    setLiveRpcUrl("", "");
-    setInterxRPCUrl(customInterxRPCUrl);
+    _storageService.setLiveRpcUrl("", "");
+    _storageService.setInterxRPCUrl(customInterxRPCUrl);
 
     Future.delayed(const Duration(milliseconds: 500), () async {
       getNodeStatus(false);
@@ -321,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen> {
       onPressed: () {
         String customInterxRPCUrl = rpcUrlController.text;
         if (customInterxRPCUrl.length > 0) {
-          setInterxRPCUrl(customInterxRPCUrl);
+          _storageService.setInterxRPCUrl(customInterxRPCUrl);
         }
         Navigator.pushReplacementNamed(context, '/login-keyfile');
       },
@@ -351,7 +357,7 @@ class _LoginScreenState extends State<LoginScreen> {
       onPressed: () {
         String customInterxRPCUrl = rpcUrlController.text;
         if (customInterxRPCUrl.length > 0) {
-          setInterxRPCUrl(customInterxRPCUrl);
+          _storageService.setInterxRPCUrl(customInterxRPCUrl);
         }
         Navigator.pushReplacementNamed(context, '/login-mnemonic');
       },
@@ -366,7 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
       height: 60,
       style: 1,
       onPressed: () {
-        setLoginStatus(false);
+        _storageService.setLoginStatus(false);
         Navigator.pushReplacementNamed(context, '/account?rpc=$testedRpcUrl');
       },
     );

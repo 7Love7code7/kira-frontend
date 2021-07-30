@@ -14,6 +14,8 @@ import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/data/account_repository.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class CreateNewAccountScreen extends StatefulWidget {
   CreateNewAccountScreen();
@@ -77,8 +79,15 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
   }
 
   void getNodeStatus() async {
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
     setState(() {
       isNetworkHealthy = nodeInfo == null ? false : networkHealth;
     });
@@ -351,7 +360,7 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
   }
 
   Widget addPublicAddress() {
-    // final String gravatar = gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
+    // final String gravatar = _gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
 
     String bech32Address = currentAccount != null ? currentAccount.bech32Address : "";
 
@@ -432,7 +441,8 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
                   // currentAccount.encryptedMnemonic =
                   //     decryptAESCryptoJS(currentAccount.encryptedMnemonic, currentAccount.secretKey);
                   // currentAccount.checksum = decryptAESCryptoJS(currentAccount.checksum, currentAccount.secretKey);
-                  setAccountData(currentAccount.toJsonString());
+                  final _storageService = getIt<StorageService>();
+                  _storageService.setAccountData(currentAccount.toJsonString());
 
                   BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
                   BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));

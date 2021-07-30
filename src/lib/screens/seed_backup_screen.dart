@@ -11,6 +11,8 @@ import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class SeedBackupScreen extends StatefulWidget {
   final String password;
@@ -57,8 +59,15 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
   }
 
   void getNodeStatus() async {
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
     setState(() {
       isNetworkHealthy = nodeInfo == null ? false : networkHealth;
     });
@@ -264,7 +273,8 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
                     style: 2,
                     onPressed: () {
                       if (exportEnabled == false) {
-                        setAccountData(currentAccount.toJsonString());
+                        final _storageService = getIt<StorageService>();
+                        _storageService.setAccountData(currentAccount.toJsonString());
                         BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
                         BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
                         setState(() {
@@ -314,9 +324,12 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
                     style: 2,
                     onPressed: () {
                       if (exportEnabled == false) {
-                        setAccountData(currentAccount.toJsonString());
+                        final _storageService = getIt<StorageService>();
+                        _storageService.setAccountData(currentAccount.toJsonString());
+
                         BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
                         BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
+
                         setState(() {
                           exportEnabled = true;
                         });

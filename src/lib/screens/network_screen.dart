@@ -7,9 +7,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:html' as html;
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class NetworkScreen extends StatefulWidget {
   @override
@@ -17,7 +18,7 @@ class NetworkScreen extends StatefulWidget {
 }
 
 class _NetworkScreenState extends State<NetworkScreen> {
-  NetworkService networkService = NetworkService();
+  final _networkService = getIt<NetworkService>();
 
   List<Validator> validators = [];
   String query = "";
@@ -41,7 +42,8 @@ class _NetworkScreenState extends State<NetworkScreen> {
   void initState() {
     super.initState();
 
-    setTopbarIndex(3);
+    final _storageService = getIt<StorageService>();
+    _storageService.setTopbarIndex(3);
 
     var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
     Map<String, String> params = uri.queryParameters; // query parameters automatically populated
@@ -51,12 +53,12 @@ class _NetworkScreenState extends State<NetworkScreen> {
       setState(() {
         isNetworkHealthy = false;
       });
-      setInterxRPCUrl(customInterxRPCUrl);
+      _storageService.setInterxRPCUrl(customInterxRPCUrl);
     } else {
-      getLoginStatus().then((isLoggedIn) {
+      _storageService.getLoginStatus().then((isLoggedIn) {
         if (isLoggedIn) {
           setState(() {
-            checkPasswordExpired().then((success) {
+            _storageService.checkPasswordExpired().then((success) {
               if (success) {
                 Navigator.pushReplacementNamed(context, '/login');
               }
@@ -77,12 +79,12 @@ class _NetworkScreenState extends State<NetworkScreen> {
     setState(() {
       moreLoading = true;
     });
-    await networkService.getValidators();
+    await _networkService.getValidators();
     if (mounted) {
       setState(() {
         moreLoading = false;
         if (isLoggedIn) favoriteValidators = BlocProvider.of<ValidatorBloc>(context).state.favoriteValidators;
-        var temp = networkService.validators;
+        var temp = _networkService.validators;
         temp.forEach((element) {
           element.isFavorite = isLoggedIn || favoriteValidators.contains(element.address);
         });
@@ -112,8 +114,14 @@ class _NetworkScreenState extends State<NetworkScreen> {
   }
 
   void getNodeStatus() async {
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
-    bool networkHealth = await getNetworkHealth();
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
 
     if (mounted) {
       setState(() {

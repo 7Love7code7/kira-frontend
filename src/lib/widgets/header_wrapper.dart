@@ -1,13 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 // import 'package:dynamic_theme/dynamic_theme.dart';
-import 'package:kira_auth/widgets/web_scrollbar.dart';
-import 'package:kira_auth/widgets/hamburger_drawer.dart';
-import 'package:kira_auth/widgets/top_bar_contents.dart';
-import 'package:kira_auth/utils/responsive.dart';
-import 'package:kira_auth/utils/strings.dart';
-import 'package:kira_auth/utils/colors.dart';
-import 'package:kira_auth/utils/cache.dart';
+import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class HeaderWrapper extends StatefulWidget {
   final Widget childWidget;
@@ -19,6 +16,7 @@ class HeaderWrapper extends StatefulWidget {
 }
 
 class _HeaderWrapperState extends State<HeaderWrapper> {
+  final _storageService = getIt<StorageService>();
   ScrollController _scrollController = ScrollController();
   double _scrollPosition = 0;
   double _opacity = 0;
@@ -33,7 +31,7 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
   }
 
   Future<bool> isUserLoggedIn() async {
-    bool isLoggedIn = await getLoginStatus();
+    bool isLoggedIn = await _storageService.getLoginStatus();
 
     return isLoggedIn;
   }
@@ -43,7 +41,7 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
     super.initState();
     _scrollController.addListener(_scrollListener);
 
-    getTopBarStatus().then((display) {
+    _storageService.getTopBarStatus().then((display) {
       setState(() {
         this.display = display;
       });
@@ -51,7 +49,7 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
 
     isUserLoggedIn().then((isLoggedIn) {
       if (isLoggedIn) {
-        checkPasswordExists().then((success) {
+        _storageService.checkPasswordExists().then((success) {
           setState(() {
             _loggedIn = success;
           });

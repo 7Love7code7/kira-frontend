@@ -4,9 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class TransactionScreen extends StatefulWidget {
   final String txHash;
@@ -17,7 +18,8 @@ class TransactionScreen extends StatefulWidget {
 }
 
 class _TransactionScreenState extends State<TransactionScreen> {
-  NetworkService networkService = NetworkService();
+  final _storageService = getIt<StorageService>();
+  final _networkService = getIt<NetworkService>();
 
   BlockTransaction transaction;
   bool isNetworkHealthy = false;
@@ -31,25 +33,27 @@ class _TransactionScreenState extends State<TransactionScreen> {
   }
 
   void getNodeStatus() async {
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
     setState(() {
       isNetworkHealthy = nodeInfo == null ? false : networkHealth;
     });
   }
 
   void getTransaction() async {
-    if ((widget.txHash ?? '').isNotEmpty) await networkService.searchTransaction(widget.txHash);
+    if ((widget.txHash ?? '').isNotEmpty) await _networkService.searchTransaction(widget.txHash);
     if (mounted) {
       setState(() {
-        transaction = networkService.transaction;
+        transaction = _networkService.transaction;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       }

@@ -2,6 +2,7 @@ import 'package:kira_auth/utils/map_sorter.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 //  Library used to separate Online Transcation Signer into separate components
 // Depending on whether they are online or offline. This is required to built an offline signer
@@ -13,8 +14,9 @@ class TransactionOfflineSigner {
   ) async {
     // Get the account data and node info from the network
     final CosmosAccount cosmosAccount = await QueryService.getAccountData(account);
+    final _storageService = getIt<StorageService>();
 
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    NodeInfo nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
 
     final signature = _getSortedJson(
       account,

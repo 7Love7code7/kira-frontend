@@ -8,9 +8,10 @@ import 'package:jdenticon/jdenticon.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class DepositScreen extends StatefulWidget {
   @override
@@ -18,8 +19,8 @@ class DepositScreen extends StatefulWidget {
 }
 
 class _DepositScreenState extends State<DepositScreen> {
-  GravatarService gravatarService = GravatarService();
-  TransactionService transactionService = TransactionService();
+  final _gravatarService = getIt<GravatarService>();
+  final _transactionService = getIt<TransactionService>();
 
   Account currentAccount;
   Timer timer;
@@ -67,8 +68,9 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   void getNodeStatus() async {
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
 
     if (mounted) {
       setState(() {
@@ -87,7 +89,7 @@ class _DepositScreenState extends State<DepositScreen> {
   getDepositTransactions() async {
     if (currentAccount != null) {
       List<Transaction> wTxs =
-          await transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: false);
+          await _transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: false);
 
       setState(() {
         initialFetched = true;
@@ -107,7 +109,8 @@ class _DepositScreenState extends State<DepositScreen> {
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
+    final _storageService = getIt<StorageService>();
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       }
@@ -299,7 +302,7 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   Widget addGravatar(BuildContext context) {
-    // final String gravatar = gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
+    // final String gravatar = _gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
 
     final String reducedAddress =
         currentAccount.bech32Address.replaceRange(10, currentAccount.bech32Address.length - 7, '....');

@@ -8,8 +8,10 @@ import 'package:kira_auth/data/validator_repository.dart';
 import 'package:kira_auth/router.dart';
 import 'package:kira_auth/utils/colors.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 Future main() async {
+  setupGetIt();
   runApp(MyApp());
 }
 

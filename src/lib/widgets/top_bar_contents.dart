@@ -1,12 +1,10 @@
 import 'dart:ui';
-// import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class TopBarContents extends StatefulWidget {
   final double opacity;
@@ -20,6 +18,8 @@ class TopBarContents extends StatefulWidget {
 }
 
 class _TopBarContentsState extends State<TopBarContents> {
+  final _storageService = getIt<StorageService>();
+
   final List _isHovering = [false, false, false, false, false, false, false, false, false, false];
   final List _notSearched = [true, false, false, true, true, true];
 
@@ -37,14 +37,19 @@ class _TopBarContentsState extends State<TopBarContents> {
     getNodeStatus();
   }
 
-  void getNodeStatus() async {
-    String lastSearchedAccount = await getLastSearchedAccount();
-    if (lastSearchedAccount.isNotEmpty) navParam = "&addr=" + lastSearchedAccount;
-    selectedIndex = await getTopbarIndex();
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
-    var apiUrl = await getLiveRpcUrl();
+  void getNodeStatus() async {
+    String lastSearchedAccount = await _storageService.getLastSearchedAccount();
+    if (lastSearchedAccount.isNotEmpty) navParam = "&addr=" + lastSearchedAccount;
+    selectedIndex = await _storageService.getTopbarIndex();
+
+    bool networkHealth = await _storageService.getNetworkHealth();
+    NodeInfo nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     if (mounted) {
       setState(() {
@@ -73,7 +78,7 @@ class _TopBarContentsState extends State<TopBarContents> {
               });
             },
             onTap: () {
-              setTopbarIndex(i);
+              _storageService.setTopbarIndex(i);
               switch (i) {
                 case 0: // Account
                   Navigator.pushReplacementNamed(
@@ -139,11 +144,11 @@ class _TopBarContentsState extends State<TopBarContents> {
         textAlign: TextAlign.center,
       ),
       onPressed: () {
-        setNetworkHealth(false);
-        setNodeStatusData("");
-        removePassword();
-        setInterxRPCUrl("");
-        setLiveRpcUrl("", "");
+        _storageService.setNetworkHealth(false);
+        _storageService.setNodeStatusData("");
+        _storageService.removePassword();
+        _storageService.setInterxRPCUrl("");
+        _storageService.setLiveRpcUrl("", "");
         Navigator.pushReplacementNamed(context, '/login');
       },
     );
@@ -310,11 +315,11 @@ class _TopBarContentsState extends State<TopBarContents> {
                       // highlightColor: KiraColors.purple2,
                       onPressed: () {
                         if (widget._loggedIn) {
-                          setNetworkHealth(false);
-                          setNodeStatusData("");
-                          removePassword();
-                          setInterxRPCUrl("");
-                          setLiveRpcUrl("", "");
+                          _storageService.setNetworkHealth(false);
+                          _storageService.setNodeStatusData("");
+                          _storageService.removePassword();
+                          _storageService.setInterxRPCUrl("");
+                          _storageService.setLiveRpcUrl("", "");
                           Navigator.pushReplacementNamed(context, '/login');
                         }
                       },

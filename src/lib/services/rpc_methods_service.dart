@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:kira_auth/models/method.dart';
-import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class RPCMethodsService {
   Map<String, Method> getMethods = new Map<String, Method>();
   Map<String, Method> postMethods = new Map<String, Method>();
 
   Future<void> getRPCMethods() async {
-    var apiUrl = await getLiveRpcUrl();
+    final _storageService = getIt<StorageService>();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     var data = await http.get(apiUrl[0] + "/rpc_methods", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var bodyData = json.decode(data.body);

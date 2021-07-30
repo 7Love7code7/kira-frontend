@@ -7,14 +7,15 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:kira_auth/helpers/export.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:kira_auth/helpers/export.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class ProposalsScreen extends StatefulWidget {
   @override
@@ -22,7 +23,7 @@ class ProposalsScreen extends StatefulWidget {
 }
 
 class _ProposalsScreenState extends State<ProposalsScreen> {
-  ProposalService proposalService = ProposalService();
+  final _proposalService = getIt<ProposalService>();
 
   List<Proposal> proposals = [];
   List<int> voteable = [0, 2];
@@ -66,11 +67,11 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
     setState(() {
       moreLoading = !loadNew;
     });
-    await proposalService.getProposals(loadNew, account: currentAccount != null ? currentAccount.bech32Address : '');
+    await _proposalService.getProposals(loadNew, account: currentAccount != null ? currentAccount.bech32Address : '');
     setState(() {
       moreLoading = false;
       proposals.clear();
-      proposals.addAll(proposalService.proposals);
+      proposals.addAll(_proposalService.proposals);
 
       var uri = Uri.dataFromString(html.window.location.href);
       Map<String, String> params = uri.queryParameters;
@@ -82,8 +83,15 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   }
 
   void getNodeStatus() async {
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
     setState(() {
       isNetworkHealthy = nodeInfo == null ? false : networkHealth;
     });
@@ -275,7 +283,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
               onTapRow: (id) => this.setState(() {
                 expandedId = id;
               }),
-              totalPages: (proposalService.totalCount / PAGE_COUNT).ceil(),
+              totalPages: (_proposalService.totalCount / PAGE_COUNT).ceil(),
               loadMore: () => getProposals(false),
               controller: proposalController,
               onTapVote: (proposalId, option) => sendProposal(proposalId, option),

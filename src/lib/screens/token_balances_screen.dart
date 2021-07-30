@@ -1,17 +1,19 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'dart:typed_data';
-import 'package:kira_auth/utils/export.dart';
-import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/blocs/export.dart';
-import 'package:kira_auth/models/export.dart';
 import 'package:convert/convert.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
+import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class TokenBalanceScreen extends StatefulWidget {
   @override
@@ -19,14 +21,16 @@ class TokenBalanceScreen extends StatefulWidget {
 }
 
 class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
+  final _storageService = getIt<StorageService>();
+  final _networkService = getIt<NetworkService>();
+
   List<Validator> validators = [];
   List<Validator> filteredValidators = [];
   String query = "";
-  NetworkService networkService = NetworkService();
 
-  TokenService tokenService = TokenService();
+  final _tokenService = getIt<TokenService>();
 
-  TransactionService transactionService = TransactionService();
+  final _transactionService = getIt<TransactionService>();
   String notification = '';
   String faucetToken;
   List<Token> tokens = [];
@@ -63,16 +67,18 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   var isSearchFinished = false;
 
   void getFaucetTokens() async {
-    if (isLoggedIn) {
+    bool _isLoggedIn = await _storageService.getLoginStatus();
+
+    if (_isLoggedIn) {
       currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
     }
 
     if (currentAccount != null && mounted) {
-      await tokenService.getAvailableFaucetTokens();
-      await tokenService.getTokens(currentAccount.bech32Address);
+      await _tokenService.getAvailableFaucetTokens();
+      await _tokenService.getTokens(currentAccount.bech32Address);
       setState(() {
-        tokens = tokenService.tokens;
-        faucetTokens = tokenService.faucetTokens;
+        tokens = _tokenService.tokens;
+        faucetTokens = _tokenService.faucetTokens;
         faucetToken = faucetTokens.length > 0 ? faucetTokens[0] : null;
 
         for (int i = 0; i < tokens.length; i++) {
@@ -86,8 +92,8 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   void showSearchedAccount() async {
-    String lastSearchedAccount = await getLastSearchedAccount();
-    int tabIndex = await getTabIndex();
+    String lastSearchedAccount = await _storageService.getLastSearchedAccount();
+    int tabIndex = await _storageService.getTabIndex();
     if (lastSearchedAccount.isNotEmpty) {
       String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
       rpc = rpc.replaceAll("http://", "");
@@ -96,7 +102,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   void navigate2AccountScreen() async {
-    int tabIndex = await getTabIndex();
+    int tabIndex = await _storageService.getTabIndex();
     if (this.query.isNotEmpty) {
       String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
       rpc = rpc.replaceAll("http://", "");
@@ -122,8 +128,13 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   void getNodeStatus() async {
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
 
     if (mounted) {
       setState(() {
@@ -148,7 +159,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   void getInterxURL() async {
-    apiUrl = await getLiveRpcUrl();
+    apiUrl = await _storageService.getLiveRpcUrl();
   }
 
   Future<void> checkAddress() async {
@@ -183,17 +194,17 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           publicKey: "");
 
       this.depositTrx =
-          await transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: false);
+          await _transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: false);
 
       this.withdrawTrx =
-          await transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: true);
+          await _transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: true);
 
       setState(() {
         if (depositTrx.isEmpty) {
           isValidAddress = false;
         } else {
           isValidAddress = true;
-          setLastSearchedAccount(this.query);
+          _storageService.setLastSearchedAccount(this.query);
           this.isSearchFinished = true;
           return;
         }
@@ -214,11 +225,11 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         BlockTransaction filteredTransaction;
         List<BlockTransaction> filteredTransactions = [];
 
-        networkService.searchBlock(query).then((v) {
+        _networkService.searchBlock(query).then((v) {
           this.setState(() {
             filteredTransactions.clear();
-            filteredTransactions.addAll(networkService.transactions);
-            filteredBlock = networkService.block;
+            filteredTransactions.addAll(_networkService.transactions);
+            filteredBlock = _networkService.block;
             filteredTransaction = null;
 
             if (filteredTransactions.isNotEmpty || filteredBlock.getReducedHash.isNotEmpty) {
@@ -228,11 +239,11 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
             this.isSearchFinished = true;
           });
         }).catchError((e) => {
-              networkService.searchTransaction(query).then((v) {
+              _networkService.searchTransaction(query).then((v) {
                 this.setState(() {
                   filteredTransactions.clear();
                   filteredBlock = null;
-                  filteredTransaction = networkService.transaction;
+                  filteredTransaction = _networkService.transaction;
 
                   if (filteredTransaction.getReducedHash.isNotEmpty) {
                     navigate2BlockScreen();
@@ -251,10 +262,10 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   getValidators() async {
-    await networkService.getValidators();
+    await _networkService.getValidators();
     if (mounted) {
       setState(() {
-        var temp = networkService.validators;
+        var temp = _networkService.validators;
 
         validators.clear();
         validators.addAll(temp);
@@ -313,8 +324,8 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   void initState() {
     super.initState();
 
-    setTopbarIndex(0);
-    setTopBarStatus(true);
+    _storageService.setTopbarIndex(0);
+    _storageService.setTopBarStatus(true);
 
     var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
     Map<String, String> params = uri.queryParameters; // query parameters automatically populated
@@ -326,14 +337,14 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         isNetworkHealthy = false;
       });
 
-      setInterxRPCUrl(customInterxRPCUrl);
+      _storageService.setInterxRPCUrl(customInterxRPCUrl);
     } else {
-      getLoginStatus().then((loggedIn) {
-        isLoggedIn = loggedIn;
-        if (isLoggedIn) {
-          setLastSearchedAccount("");
+      _storageService.getLoginStatus().then((loggedIn) {
+        if (loggedIn) {
+          _storageService.setLastSearchedAccount("");
           setState(() {
-            checkPasswordExpired().then((success) {
+            isLoggedIn = loggedIn;
+            _storageService.checkPasswordExpired().then((success) {
               if (success) {
                 Navigator.pushReplacementNamed(context, '/login');
               }
@@ -537,7 +548,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           fontSize: 15,
           onPressed: () async {
             if (this.query.length > 0) {
-              String result = await tokenService.faucet(this.query, faucetToken);
+              String result = await _tokenService.faucet(this.query, faucetToken);
               setState(() {
                 notification = result;
               });
@@ -564,7 +575,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           fontSize: 15,
           onPressed: () async {
             if (this.query.length > 0) {
-              String result = await tokenService.faucet(this.query, faucetToken);
+              String result = await _tokenService.faucet(this.query, faucetToken);
               setState(() {
                 notification = result;
               });
@@ -656,7 +667,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
               sortIndex = 0;
               isAscending = true;
               lastTxHash = '';
-              setTabIndex(this.tabType);
+              _storageService.setTabIndex(this.tabType);
               showSearchedAccount();
             });
           },

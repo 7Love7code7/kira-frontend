@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/service_manager.dart';
+import 'package:kira_auth/services/export.dart';
 
 class HamburgerDrawer extends StatefulWidget {
   HamburgerDrawer({
@@ -23,20 +25,22 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
   String rpcUrl;
   bool isNetworkHealthy;
 
+  final _storageService = getIt<StorageService>();
+
   @override
   void initState() {
     super.initState();
 
     getNodeStatus();
-    getLoginStatus().then((loggedIn) => this.setState(() {
+    _storageService.getLoginStatus().then((loggedIn) => this.setState(() {
           isLoggedIn = loggedIn;
         }));
   }
 
   void getNodeStatus() async {
-    var apiUrl = await getLiveRpcUrl();
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    var apiUrl = await _storageService.getLiveRpcUrl();
+    bool networkHealth = await _storageService.getNetworkHealth();
+    NodeInfo nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
 
     if (mounted) {
       setState(() {
@@ -52,7 +56,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
     setState(() {});
 
-    String lastSearchedAccount = await getLastSearchedAccount();
+    String lastSearchedAccount = await _storageService.getLastSearchedAccount();
     if (lastSearchedAccount.isNotEmpty) navParam = "&addr=" + lastSearchedAccount;
   }
 
@@ -125,7 +129,7 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
     if (isLoggedIn)
       items.add(ElevatedButton(
         onPressed: () {
-          removePassword();
+          _storageService.removePassword();
           Navigator.pushReplacementNamed(context, '/login');
         },
         child: Padding(
@@ -151,11 +155,11 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         textAlign: TextAlign.center,
       ),
       onPressed: () {
-        setNetworkHealth(false);
-        getNodeStatusData("");
-        removePassword();
-        setInterxRPCUrl("");
-        setLiveRpcUrl("", "");
+        _storageService.setNetworkHealth(false);
+        _storageService.getNodeStatusData("");
+        _storageService.removePassword();
+        _storageService.setInterxRPCUrl("");
+        _storageService.setLiveRpcUrl("", "");
         Navigator.pushReplacementNamed(context, '/login');
       },
     );

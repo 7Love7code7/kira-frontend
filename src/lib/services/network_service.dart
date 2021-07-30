@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class NetworkService {
   List<Validator> validators = [];
@@ -18,9 +20,11 @@ class NetworkService {
   BlockTransaction transaction;
 
   Future<void> getValidators() async {
+    final _storageService = getIt<StorageService>();
+
     List<Validator> validatorList = [];
 
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     var data = await http.get(apiUrl[0] + "/valopers?offset=$lastOffset&count_total=true",
         headers: {'Access-Control-Allow-Origin': apiUrl[1]});
@@ -36,7 +40,8 @@ class NetworkService {
   }
 
   Future<Validator> searchValidator(String proposer) async {
-    var apiUrl = await getLiveRpcUrl();
+    final _storageService = getIt<StorageService>();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     var data =
         await http.get(apiUrl[0] + "/valopers?proposer=$proposer", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
@@ -63,8 +68,9 @@ class NetworkService {
 
   Future<void> getBlocks(bool loadNew) async {
     List<Block> blockList = [];
+    final _storageService = getIt<StorageService>();
 
-    SyncInfo syncInfo = await getNodeStatusData("SYNC_INFO");
+    SyncInfo syncInfo = await _storageService.getNodeStatusData("SYNC_INFO");
 
     var offset, limit;
     if (loadNew) {
@@ -81,8 +87,8 @@ class NetworkService {
 
     var i = 1;
     while (i < limit) {
-      if (!await checkModelExists(ModelType.BLOCK, (offset + i).toString())) break;
-      var block = Block.fromJson(await getModel(ModelType.BLOCK, (offset + i).toString()));
+      if (!await _storageService.checkModelExists(ModelType.BLOCK, (offset + i).toString())) break;
+      var block = Block.fromJson(await _storageService.getModel(ModelType.BLOCK, (offset + i).toString()));
       block.validator = await searchValidator(block.proposerAddress);
       if (block.validator == null) break;
       blockList.add(block);
@@ -90,7 +96,7 @@ class NetworkService {
     }
 
     if (i < limit) {
-      var apiUrl = await getLiveRpcUrl();
+      var apiUrl = await _storageService.getLiveRpcUrl();
       var data = await http.get(apiUrl[0] + '/blocks?minHeight=${offset + i}&maxHeight=${offset + limit}',
           headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
@@ -102,7 +108,7 @@ class NetworkService {
         Block block = Block.fromJson(blocks[i]);
         block.validator = await searchValidator(block.proposerAddress);
         blockList.add(block);
-        storeModels(ModelType.BLOCK, block.height.toString(), block.jsonString);
+        _storageService.storeModels(ModelType.BLOCK, block.height.toString(), block.jsonString);
       }
     }
 
@@ -111,8 +117,9 @@ class NetworkService {
   }
 
   Future<void> searchTransaction(String query) async {
+    final _storageService = getIt<StorageService>();
     transaction = null;
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     var data = await http.get(apiUrl[0] + '/transactions/$query', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var bodyData = json.decode(data.body);
     if (bodyData.containsKey("code")) return;
@@ -121,8 +128,9 @@ class NetworkService {
   }
 
   Future<void> searchBlock(String query) async {
+    final _storageService = getIt<StorageService>();
     block = null;
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     var data = await http.get(apiUrl[0] + '/blocks/$query', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var bodyData = json.decode(data.body);
     if (bodyData.containsKey("code"))
@@ -149,20 +157,21 @@ class NetworkService {
         time: DateTime.parse(header['time'] ?? DateTime.now().toString()),
       );
       block.validator = await searchValidator(block.proposerAddress);
-      storeModels(ModelType.BLOCK, block.height.toString(), block.jsonString);
+      _storageService.storeModels(ModelType.BLOCK, block.height.toString(), block.jsonString);
       await getTransactions(block.height);
     }
   }
 
   Future<void> getTransactions(int height) async {
+    final _storageService = getIt<StorageService>();
     if (height < 0)
       this.transactions = List.empty();
-    else if (await checkModelExists(ModelType.TRANSACTION, height.toString()))
-      this.transactions = await getTransactionsForHeight(height);
+    else if (await _storageService.checkModelExists(ModelType.TRANSACTION, height.toString()))
+      this.transactions = await _storageService.getTransactionsForHeight(height);
     else {
       List<BlockTransaction> transactionList = [];
 
-      var apiUrl = await getLiveRpcUrl();
+      var apiUrl = await _storageService.getLiveRpcUrl();
       var data = await http
           .get(apiUrl[0] + '/blocks/$height/transactions', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
       var bodyData = json.decode(data.body);
@@ -174,7 +183,7 @@ class NetworkService {
       }
 
       this.transactions = transactionList;
-      storeModels(
+      _storageService.storeModels(
           ModelType.TRANSACTION, height.toString(), jsonEncode(transactionList.map((e) => e.jsonString).toList()));
     }
   }

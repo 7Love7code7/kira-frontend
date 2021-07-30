@@ -1,5 +1,5 @@
 name: kira_auth
-description: A new Flutter project.
+description: Kira Frontend
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `pub publish`. This is preferred for private packages.
@@ -73,6 +73,7 @@ dependencies:
   flutter_countdown_timer: ^3.0.1
   universal_ui: ^0.0.8
   expandable: ^4.0.0
+  get_it: ^7.2.0
   # BLAKE2b and BLAKE2s cryptographic hashing functions
 
 dev_dependencies:

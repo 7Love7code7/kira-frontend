@@ -4,6 +4,7 @@ import 'package:kira_auth/utils/map_sorter.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class TransactionSigner {
   /// Signs the given [stdTx] using the info contained inside the
@@ -20,7 +21,8 @@ class TransactionSigner {
       }
     }
 
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _storageService = getIt<StorageService>();
+    NodeInfo nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
 
     // Sign all messages
     final signature = _getStdSignature(
@@ -101,7 +103,8 @@ class TransactionSigner {
       if (sequence.isEmpty) sequence = cosmosAccount.sequence;
     }
 
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _storageService = getIt<StorageService>();
+    NodeInfo nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
 
     // Sign all messages
     final signature = _getVoteSignature(

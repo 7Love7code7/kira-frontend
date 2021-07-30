@@ -11,7 +11,7 @@ import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
-import 'package:kira_auth/widgets/header_wrapper.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -19,7 +19,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  TokenService tokenService = TokenService();
+  final _tokenService = getIt<TokenService>();
   String accountId, feeTokenTicker, notification = '';
   String expireTime = '0', error = '', accountNameError = '', currentPassword = '';
   bool isError = true, isEditEnabled = false;
@@ -41,6 +41,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   FocusNode passwordNode;
   TextEditingController passwordController;
+
+  final _storageService = getIt<StorageService>();
 
   void readCachedData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -81,13 +83,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Account currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
     Token feeToken = BlocProvider.of<TokenBloc>(context).state.feeToken;
     if (currentAccount != null && mounted) {
-      await tokenService.getTokens(currentAccount.bech32Address);
+      await _tokenService.getTokens(currentAccount.bech32Address);
 
       setState(() {
-        tokens = tokenService.tokens;
+        tokens = _tokenService.tokens;
         feeTokenTicker = feeToken != null
             ? feeToken.ticker
-            : tokenService.tokens.length > 0
+            : _tokenService.tokens.length > 0
                 ? tokens[0].ticker
                 : null;
       });
@@ -95,15 +97,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void getInterxRPCUrl() async {
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     String interxUrl = apiUrl[0];
     interxUrl = interxUrl.replaceAll('/api', '');
     rpcUrlController.text = interxUrl;
   }
 
   void getNodeStatus() async {
-    bool networkHealth = await getNetworkHealth();
-    NodeInfo nodeInfo = await getNodeStatusData("NODE_INFO");
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
     setState(() {
       isNetworkHealthy = nodeInfo == null ? false : networkHealth;
     });
@@ -212,22 +221,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       isError = false;
     });
 
-    setExpireTime(Duration(minutes: minutes));
-    setInterxRPCUrl(customInterxRPCUrl);
-    setFeeAmount(feeAmount);
+    _storageService.setExpireTime(Duration(minutes: minutes));
+    _storageService.setInterxRPCUrl(customInterxRPCUrl);
+    _storageService.setFeeAmount(feeAmount);
 
     Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
     BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-    setCurrentAccount(currentAccount.toJsonString());
+    _storageService.setCurrentAccount(currentAccount.toJsonString());
 
     Token feeToken = tokens.where((e) => e.ticker == feeTokenTicker).toList()[0];
     BlocProvider.of<TokenBloc>(context).add(SetFeeToken(feeToken));
-    setFeeToken(feeToken.toString());
+    _storageService.setFeeToken(feeToken.toString());
   }
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       }
@@ -490,12 +499,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   }
 
-                  removeCachedAccount();
-                  setAccountData(updatedString);
+                  _storageService.removeCachedAccount();
+                  _storageService.setAccountData(updatedString);
 
                   Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
                   BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-                  setCurrentAccount(currentAccount.toJsonString());
+                  _storageService.setCurrentAccount(currentAccount.toJsonString());
 
                   setState(() {
                     isEditEnabled = false;
@@ -780,11 +789,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           accountId = accounts.length > 0 ? accounts[0].encryptedMnemonic : null;
         });
 
-        removeCachedAccount();
-        setAccountData(updatedString);
+        _storageService.removeCachedAccount();
+        _storageService.setAccountData(updatedString);
 
         if (updatedString.isEmpty) {
-          removePassword();
+          _storageService.removePassword();
           Navigator.pushReplacementNamed(context, '/');
         }
 

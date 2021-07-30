@@ -4,15 +4,17 @@ import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:kira_auth/models/account.dart';
 import 'package:kira_auth/models/transactions/export.dart';
-import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class EncodeTransactionSender {
   static Future<dynamic> broadcastStdEncodeTx({
     @required Account account,
     @required StdEncodeMessage stdEncodeMsg,
   }) async {
+    final _storageService = getIt<StorageService>();
     // Get the endpoint
-    var apiUrl = await getLiveRpcUrl();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     // Build the request body
     final requestBodyJson = jsonEncode(stdEncodeMsg.toJson());

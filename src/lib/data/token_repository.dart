@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 abstract class TokenRepository {
   Future<Token> getFeeTokenFromCache();
@@ -18,8 +19,8 @@ class ITokenRepository implements TokenRepository {
 
   @override
   Future<List<Token>> getTokens(address) async {
-    TokenService tokenService = new TokenService();
-    await tokenService.getTokens(address);
-    return tokenService.tokens;
+    final _tokenService = getIt<TokenService>();
+    await _tokenService.getTokens(address);
+    return _tokenService.tokens;
   }
 }
