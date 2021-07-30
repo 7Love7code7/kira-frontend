@@ -41,9 +41,9 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
     super.initState();
     _scrollController.addListener(_scrollListener);
 
-    _storageService.getTopBarStatus().then((display) {
+    _storageService.getTopBarStatus().then((displayResult) {
       setState(() {
-        this.display = display;
+        display = displayResult;
       });
     });
 
@@ -98,7 +98,7 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
 
     return PreferredSize(
       preferredSize: Size(screenSize.width, 1000),
-      child: TopBarContents(_opacity, _loggedIn, display),
+      child: TopBarContents(_opacity, _loggedIn, widget.isNetworkHealthy, display),
     );
   }
 

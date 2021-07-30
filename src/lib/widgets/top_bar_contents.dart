@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:kira_auth/utils/export.dart';
-import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
@@ -9,9 +11,10 @@ import 'package:kira_auth/service_manager.dart';
 class TopBarContents extends StatefulWidget {
   final double opacity;
   final bool _loggedIn;
+  final bool _isNetworkHealthy;
   final bool _display;
 
-  TopBarContents(this.opacity, this._loggedIn, this._display);
+  TopBarContents(this.opacity, this._loggedIn, this._isNetworkHealthy, this._display);
 
   @override
   _TopBarContentsState createState() => _TopBarContentsState();
@@ -24,9 +27,6 @@ class _TopBarContentsState extends State<TopBarContents> {
   final List _notSearched = [true, false, false, true, true, true];
 
   bool _isProcessing = false;
-  String networkId = Strings.noAvailableNetworks;
-  String nodeAddress;
-  bool _isNetworkHealthy;
   int selectedIndex = 0;
   String rpcUrl;
   String navParam = "";
@@ -45,26 +45,13 @@ class _TopBarContentsState extends State<TopBarContents> {
   void getNodeStatus() async {
     String lastSearchedAccount = await _storageService.getLastSearchedAccount();
     if (lastSearchedAccount.isNotEmpty) navParam = "&addr=" + lastSearchedAccount;
-    selectedIndex = await _storageService.getTopbarIndex();
-
-    bool networkHealth = await _storageService.getNetworkHealth();
-    NodeInfo nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
-    var apiUrl = await _storageService.getLiveRpcUrl();
-
-    if (mounted) {
-      setState(() {
-        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
-          networkId = nodeInfo.network;
-          nodeAddress = getIPOnly(apiUrl[0]);
-          _isNetworkHealthy = networkHealth;
-        } else {
-          _isNetworkHealthy = false;
-        }
-      });
-    }
+    var topbarIndex = await _storageService.getTopbarIndex();
+    setState(() {
+      selectedIndex = topbarIndex;
+    });
   }
 
-  List<Widget> navItems() {
+  List<Widget> navItems(String nodeAddress) {
     List<Widget> items = [];
 
     for (int i = 0; i < 6; i++) {
@@ -144,11 +131,14 @@ class _TopBarContentsState extends State<TopBarContents> {
         textAlign: TextAlign.center,
       ),
       onPressed: () {
+        final _statusService = getIt<StatusService>();
+        _statusService.disconnect();
         _storageService.setNetworkHealth(false);
         _storageService.setNodeStatusData("");
         _storageService.removePassword();
         _storageService.setInterxRPCUrl("");
         _storageService.setLiveRpcUrl("", "");
+        BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
         Navigator.pushReplacementNamed(context, '/login');
       },
     );
@@ -200,7 +190,7 @@ class _TopBarContentsState extends State<TopBarContents> {
                     style: TextStyle(fontSize: 18, color: KiraColors.blue1, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    _isNetworkHealthy == true ? "Healthy" : "Unhealthy",
+                    widget._isNetworkHealthy == true ? "Healthy" : "Unhealthy",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 18, color: KiraColors.black),
                   ),
@@ -219,7 +209,10 @@ class _TopBarContentsState extends State<TopBarContents> {
   @override
   Widget build(BuildContext context) {
     var screenSize = MediaQuery.of(context).size;
-    var networkStatusColor = _isNetworkHealthy == true ? KiraColors.green3 : KiraColors.orange3;
+    var networkStatusColor = widget._isNetworkHealthy == true ? KiraColors.green3 : KiraColors.orange3;
+    var networkId = BlocProvider.of<NetworkBloc>(context).state.networkId;
+    var nodeAddress = BlocProvider.of<NetworkBloc>(context).state.nodeAddress;
+    networkId = networkId == null ? Strings.noAvailableNetworks : networkId;
 
     return PreferredSize(
       preferredSize: Size(screenSize.width, 1000),
@@ -253,7 +246,7 @@ class _TopBarContentsState extends State<TopBarContents> {
                 ? Expanded(
                     child: Center(
                         child: Wrap(
-                      children: navItems(),
+                      children: navItems(nodeAddress),
                     )),
                   )
                 : Expanded(child: SizedBox(width: 500)),

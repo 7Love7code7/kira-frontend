@@ -1,9 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/service_manager.dart';
 import 'package:kira_auth/services/export.dart';
 
@@ -155,11 +157,14 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
         textAlign: TextAlign.center,
       ),
       onPressed: () {
+        final _statusService = getIt<StatusService>();
+        _statusService.disconnect();
         _storageService.setNetworkHealth(false);
-        _storageService.getNodeStatusData("");
+        _storageService.setNodeStatusData("");
         _storageService.removePassword();
         _storageService.setInterxRPCUrl("");
         _storageService.setLiveRpcUrl("", "");
+        BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
         Navigator.pushReplacementNamed(context, '/login');
       },
     );

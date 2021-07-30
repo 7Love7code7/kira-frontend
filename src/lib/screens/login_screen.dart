@@ -1,10 +1,12 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter/material.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
 
@@ -71,6 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         bool networkHealth = _statusService.isNetworkHealthy;
         NodeInfo nodeInfo = _statusService.nodeInfo;
+        BlocProvider.of<NetworkBloc>(context)
+            .add(SetNetworkInfo(_statusService.nodeInfo.network, _statusService.rpcUrl));
 
         if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
           setState(() {

@@ -20,15 +20,18 @@ class StatusService {
 
   Future<void> initialize() async {
     var networkHealth = await _storageService.getNetworkHealth();
-    print("NETWORK HEALTH: ${networkHealth}");
     isNetworkHealthy = (networkHealth == null) ? false : networkHealth;
     nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
     syncInfo = await _storageService.getNodeStatusData("SYNC_INFO");
     validatorInfo = await _storageService.getNodeStatusData("VALIDATOR_INFO");
   }
 
-  void dispose() {
-    _storageService.setNetworkHealth(isNetworkHealthy);
+  void disconnect() {
+    nodeInfo = null;
+    syncInfo = null;
+    validatorInfo = null;
+    rpcUrl = "";
+    isNetworkHealthy = false;
   }
 
   Future<bool> getNodeStatus() async {
