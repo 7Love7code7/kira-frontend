@@ -64,12 +64,24 @@ class ProposalService {
       var proposals = bodyData['proposals'];
       for (int i = 0; i < proposals.length; i++) {
         Proposal proposal = Proposal.fromJson(proposals[i]);
-        proposal.voteability = await checkVoteability(proposal.proposalId, account);
-        proposal.voteResults = await getVoteResult(proposal.proposalId);
+        if (account.isEmpty) proposal.voteability = Voteability.empty;
         proposalList.add(proposal);
         _storageService.storeModels(ModelType.PROPOSAL, proposal.proposalId, proposal.jsonString);
       }
     }
+
+    if (account.isNotEmpty) {
+      var voteabilities = proposalList.map((proposal) => checkVoteability(proposal.proposalId, account));
+      var responses = await Future.wait(voteabilities);
+      responses.asMap().forEach((index, response) {
+        proposalList[index].voteability = response;
+      });
+    }
+    var results = proposalList.map((proposal) => getVoteResult(proposal.proposalId));
+    var responses = await Future.wait(results);
+    responses.asMap().forEach((index, response) {
+      proposalList[index].voteResults = response;
+    });
 
     final now = DateTime.now();
     this.proposals.addAll(proposalList);

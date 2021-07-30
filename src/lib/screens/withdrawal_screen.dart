@@ -624,10 +624,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             // Sign the transaction
             final signedStdTx = await TransactionSigner.signStdTx(currentAccount, stdTx);
 
-            print(signedStdTx);
             // Broadcast signed transaction
             final result = await TransactionSender.broadcastStdTx(account: currentAccount, stdTx: signedStdTx);
-            print(result);
 
             if (result == false) {
               setState(() {

@@ -35,7 +35,7 @@ packages:
       name: async
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.6.1"
+    version: "2.5.0"
   base32:
     dependency: "direct main"
     description:
@@ -813,7 +813,7 @@ packages:
       name: source_span
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.8.1"
+    version: "1.8.0"
   stack_trace:
     dependency: transitive
     description:
@@ -855,7 +855,7 @@ packages:
       name: test_api
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.3.0"
+    version: "0.2.19"
   timing:
     dependency: transitive
     description:
@@ -897,7 +897,7 @@ packages:
       name: url_launcher
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "6.0.5"
+    version: "6.0.3"
   url_launcher_linux:
     dependency: transitive
     description:
@@ -925,7 +925,7 @@ packages:
       name: url_launcher_web
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.1"
+    version: "2.0.0"
   url_launcher_windows:
     dependency: transitive
     description:
@@ -976,5 +976,5 @@ packages:
     source: hosted
     version: "2.2.1"
 sdks:
-  dart: ">=2.12.0 <3.0.0"
-  flutter: ">=2.0.0"
+  dart: ">=2.12.0-259.9.beta <3.0.0"
+  flutter: ">=1.24.0-10.1.pre"
