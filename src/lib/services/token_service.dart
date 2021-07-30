@@ -10,6 +10,8 @@ class TokenService {
   List<Token> tokens = [];
   List<String> faucetTokens = [];
 
+  void initialize() {}
+
   Future<void> getTokens(String address) async {
     List<Token> tokenList = [];
 

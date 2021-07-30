@@ -308,11 +308,14 @@ class _TopBarContentsState extends State<TopBarContents> {
                       // highlightColor: KiraColors.purple2,
                       onPressed: () {
                         if (widget._loggedIn) {
+                          final _statusService = getIt<StatusService>();
+                          _statusService.disconnect();
                           _storageService.setNetworkHealth(false);
                           _storageService.setNodeStatusData("");
                           _storageService.removePassword();
                           _storageService.setInterxRPCUrl("");
                           _storageService.setLiveRpcUrl("", "");
+                          BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
                           Navigator.pushReplacementNamed(context, '/login');
                         }
                       },

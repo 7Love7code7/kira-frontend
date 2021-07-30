@@ -20,6 +20,7 @@ class GlobalScreen extends StatefulWidget {
 class _GlobalScreenState extends State<GlobalScreen> {
   final _statusService = getIt<StatusService>();
   final _storageService = getIt<StorageService>();
+  final _tokenService = getIt<TokenService>();
 
   Account currentAccount;
   Timer timer;
@@ -46,6 +47,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
   void fetchData(bool isFirst) async {
     if (isFirst) {
       _statusService.initialize();
+      _tokenService.initialize();
     }
 
     await _statusService.getNodeStatus();
