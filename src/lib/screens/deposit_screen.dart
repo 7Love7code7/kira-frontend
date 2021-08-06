@@ -44,16 +44,9 @@ class _DepositScreenState extends State<DepositScreen> {
     this.depositController = TextEditingController();
     this.copied1 = false;
     this.copied2 = false;
-    getNodeStatus();
 
-    if (mounted) {
-      setState(() {
-        if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-          currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-          this.depositController.text = currentAccount != null ? currentAccount.bech32Address : '';
-        }
-      });
-    }
+    getNodeStatus();
+    getCurrentAccount();
     getDepositTransactions();
   }
 
@@ -72,6 +65,11 @@ class _DepositScreenState extends State<DepositScreen> {
     bool networkHealth = _statusService.isNetworkHealthy;
     NodeInfo nodeInfo = _statusService.nodeInfo;
 
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
     if (mounted) {
       setState(() {
         if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
@@ -82,6 +80,18 @@ class _DepositScreenState extends State<DepositScreen> {
         } else {
           isNetworkHealthy = false;
         }
+      });
+    }
+  }
+
+  getCurrentAccount() async {
+    final _storageService = getIt<StorageService>();
+    Account curAccount = await _storageService.getCurrentAccount();
+
+    if (mounted) {
+      setState(() {
+        currentAccount = curAccount;
+        depositController.text = currentAccount != null ? currentAccount.bech32Address : '';
       });
     }
   }
@@ -117,36 +127,32 @@ class _DepositScreenState extends State<DepositScreen> {
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1000),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            if (currentAccount != null) addGravatar(context),
-                            ResponsiveWidget.isSmallScreen(context) ? addInformationSmall() : addInformationBig(),
-                            !initialFetched
-                                ? addLoadingIndicator()
-                                : transactions.isEmpty
-                                    ? Container(
-                                        margin: EdgeInsets.only(top: 20, left: 20),
-                                        child: Text("No deposit transactions to show",
-                                            style: TextStyle(
-                                                color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                    : addTransactionsTable(),
-                          ],
-                        ),
-                      )));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+                alignment: Alignment.center,
+                margin: EdgeInsets.only(top: 50, bottom: 50),
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1000),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      if (currentAccount != null) addGravatar(context),
+                      ResponsiveWidget.isSmallScreen(context) ? addInformationSmall() : addInformationBig(),
+                      !initialFetched
+                          ? addLoadingIndicator()
+                          : transactions.isEmpty
+                              ? Container(
+                                  margin: EdgeInsets.only(top: 20, left: 20),
+                                  child: Text("No deposit transactions to show",
+                                      style: TextStyle(
+                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                              : addTransactionsTable(),
+                    ],
+                  ),
+                ))));
   }
 
   Widget addLoadingIndicator() {

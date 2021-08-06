@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
@@ -37,9 +36,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
     bool networkHealth = _statusService.isNetworkHealthy;
     NodeInfo nodeInfo = _statusService.nodeInfo;
 
-    setState(() {
-      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
-    });
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+      });
+    }
   }
 
   void getTransaction() async {
@@ -60,37 +66,33 @@ class _TransactionScreenState extends State<TransactionScreen> {
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1200),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            Container(
-                                margin: EdgeInsets.only(bottom: 40),
-                                child: Text(
-                                  Strings.txDetails,
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
-                                )),
-                            transaction != null
-                                ? addTransactionDetails()
-                                : Center(
-                                    child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  )),
-                          ],
-                        ),
-                      )));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+                alignment: Alignment.center,
+                margin: EdgeInsets.only(top: 50, bottom: 50),
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1200),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Container(
+                          margin: EdgeInsets.only(bottom: 40),
+                          child: Text(
+                            Strings.txDetails,
+                            textAlign: TextAlign.left,
+                            style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+                          )),
+                      transaction != null
+                          ? addTransactionDetails()
+                          : Center(
+                              child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            )),
+                    ],
+                  ),
+                ))));
   }
 
   Widget addTransactionDetails() {

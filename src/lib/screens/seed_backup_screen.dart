@@ -35,18 +35,9 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
   @override
   void initState() {
     super.initState();
-    // removeCachedAccount();
-    getNodeStatus();
 
-    if (mounted) {
-      setState(() {
-        if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-          currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-          mnemonic = decryptAESCryptoJS(currentAccount.encryptedMnemonic, currentAccount.secretKey);
-          wordList = mnemonic.split(' ');
-        }
-      });
-    }
+    getNodeStatus();
+    getCurrentAccount();
 
     seedPhraseNode = FocusNode();
     seedPhraseController = TextEditingController();
@@ -56,6 +47,24 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
   void dispose() {
     seedPhraseController.dispose();
     super.dispose();
+  }
+
+  getCurrentAccount() async {
+    final _accountService = getIt<AccountService>();
+    final _storageService = getIt<StorageService>();
+    Account curAccount = _accountService.currentAccount;
+
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (mounted) {
+      setState(() {
+        currentAccount = curAccount;
+        mnemonic = decryptAESCryptoJS(curAccount.encryptedMnemonic, curAccount.secretKey);
+        wordList = mnemonic.split(' ');
+      });
+    }
   }
 
   void getNodeStatus() async {
@@ -68,9 +77,11 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
       nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
     }
 
-    setState(() {
-      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
-    });
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+      });
+    }
   }
 
   @override
@@ -79,33 +90,29 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
 
     return Scaffold(
         resizeToAvoidBottomInset: false,
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                isNetworkHealthy: isNetworkHealthy,
-                childWidget: Container(
-                    alignment: Alignment.center,
-                    margin: EdgeInsets.only(top: 50, bottom: 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 600),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            addMnemonicDescription(),
-                            addMnemonic(),
-                            addCopyButton(),
-                            addQrCode(),
-                            addPublicAddress(),
-                            addExportButton(),
-                            ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
-                          ],
-                        ))),
-              );
-            }));
+        body: HeaderWrapper(
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.only(top: 50, bottom: 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      addMnemonicDescription(),
+                      addMnemonic(),
+                      addCopyButton(),
+                      addQrCode(),
+                      addPublicAddress(),
+                      addExportButton(),
+                      ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
+                    ],
+                  ))),
+        ));
   }
 
   Widget addHeaderTitle() {
@@ -271,11 +278,10 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
                     text: Strings.createNewAccount,
                     height: 60,
                     style: 2,
-                    onPressed: () {
+                    onPressed: () async {
                       if (exportEnabled == false) {
-                        final _storageService = getIt<StorageService>();
-                        _storageService.setAccountData(currentAccount.toJsonString());
-                        BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
+                        final _accountService = getIt<AccountService>();
+                        await _accountService.setCurrentAccount(currentAccount);
                         BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
                         setState(() {
                           exportEnabled = true;
@@ -322,12 +328,11 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
                     width: 250,
                     height: 65,
                     style: 2,
-                    onPressed: () {
+                    onPressed: () async {
                       if (exportEnabled == false) {
-                        final _storageService = getIt<StorageService>();
-                        _storageService.setAccountData(currentAccount.toJsonString());
+                        final _accountService = getIt<AccountService>();
+                        await _accountService.setCurrentAccount(currentAccount);
 
-                        BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
                         BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
 
                         setState(() {

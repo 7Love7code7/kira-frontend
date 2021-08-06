@@ -5,6 +5,7 @@ final getIt = GetIt.instance;
 
 void setupGetIt() {
   getIt.registerLazySingleton<GravatarService>(() => GravatarService());
+  getIt.registerLazySingleton<AccountService>(() => AccountService());
   getIt.registerLazySingleton<ProposalService>(() => ProposalService());
   getIt.registerLazySingleton<QueryService>(() => QueryService());
   getIt.registerLazySingleton<RPCMethodsService>(() => RPCMethodsService());

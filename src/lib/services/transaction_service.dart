@@ -83,7 +83,6 @@ class TransactionService {
         await http.get(apiUrl[0] + "/unconfirmed_txs", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     Map<String, dynamic> ucBody = jsonDecode(ucResponse.body);
-    print(ucBody['txs']);
 
     for (final tx in ucBody['txs']) {
       Transaction transaction = Transaction();

@@ -19,13 +19,17 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final _accountService = getIt<AccountService>();
+  final _storageService = getIt<StorageService>();
   final _tokenService = getIt<TokenService>();
+
   String accountId, feeTokenTicker, notification = '';
   String expireTime = '0', error = '', accountNameError = '', currentPassword = '';
   bool isError = true, isEditEnabled = false;
   List<Account> accounts = [];
   List<Token> tokens = [];
   bool isNetworkHealthy = false;
+  Account currentAccount;
 
   FocusNode expireTimeFocusNode;
   TextEditingController expireTimeController;
@@ -42,48 +46,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
   FocusNode passwordNode;
   TextEditingController passwordController;
 
-  final _storageService = getIt<StorageService>();
+  @override
+  void initState() {
+    super.initState();
+
+    expireTimeFocusNode = FocusNode();
+    expireTimeController = TextEditingController();
+
+    feeAmountNode = FocusNode();
+    feeAmountController = TextEditingController();
+    feeAmountController.text = '1000';
+
+    rpcUrlNode = FocusNode();
+    rpcUrlController = TextEditingController();
+
+    accountNameNode = FocusNode();
+    accountNameController = TextEditingController();
+
+    passwordNode = FocusNode();
+    passwordController = TextEditingController();
+
+    getNodeStatus();
+    getInterxRPCUrl();
+    getCurrentAccount();
+    readCachedData();
+    getTokens();
+  }
 
   void readCachedData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<Account> cAccounts = _accountService.accounts;
 
-    setState(() {
-      String cachedAccountString = prefs.getString('ACCOUNTS');
-      var array = cachedAccountString.split('---');
+    if (cAccounts.length == 0) {
+      cAccounts = await _storageService.getAccountData();
+    }
 
-      for (int index = 0; index < array.length; index++) {
-        if (array[index] != '') {
-          Account account = Account.fromString(array[index]);
-          accounts.add(account);
-        }
-      }
+    String cPassword = await _storageService.getPassword();
+    int cExpireTime = await _storageService.getExpireTime();
+    int cFeeAmount = await _storageService.getFeeAmount();
 
-      if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-        accountId = BlocProvider.of<AccountBloc>(context).state.currentAccount.encryptedMnemonic;
-        accountNameController.text = BlocProvider.of<AccountBloc>(context).state.currentAccount.name;
-      }
+    if (mounted) {
+      setState(() {
+        accounts = cAccounts;
 
-      // Cached password
-      currentPassword = prefs.getString('PASSWORD');
+        // Cached password
+        currentPassword = cPassword;
 
-      // Password expire time
-      expireTime = (prefs.getInt('EXPIRE_TIME') / 60000).toString();
-      expireTimeController.text = expireTime;
+        // Password expire time
+        expireTime = (cExpireTime / 60000).toString();
+        expireTimeController.text = expireTime;
 
-      // Fee amount
-      int feeAmount = prefs.getInt('FEE_AMOUNT');
-      if (feeAmount.runtimeType != Null)
-        feeAmountController.text = feeAmount.toString();
-      else
-        feeAmountController.text = "100";
-    });
+        // Fee amount
+        feeAmountController.text = cFeeAmount.toString();
+      });
+    }
   }
 
   void getTokens() async {
-    Account currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-    Token feeToken = BlocProvider.of<TokenBloc>(context).state.feeToken;
+    Token feeToken = await _storageService.getFeeToken();
+
     if (currentAccount != null && mounted) {
-      await _tokenService.getTokens(currentAccount.bech32Address);
+      if (_tokenService.tokens.length == 0) {
+        await _tokenService.getTokens(currentAccount.bech32Address);
+      }
 
       setState(() {
         tokens = _tokenService.tokens;
@@ -113,35 +137,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
     }
 
-    setState(() {
-      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
-    });
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+      });
+    }
   }
 
-  @override
-  void initState() {
-    super.initState();
+  getCurrentAccount() async {
+    Account curAccount = _accountService.currentAccount;
 
-    expireTimeFocusNode = FocusNode();
-    expireTimeController = TextEditingController();
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
 
-    feeAmountNode = FocusNode();
-    feeAmountController = TextEditingController();
-    feeAmountController.text = '1000';
-
-    rpcUrlNode = FocusNode();
-    rpcUrlController = TextEditingController();
-
-    accountNameNode = FocusNode();
-    accountNameController = TextEditingController();
-
-    passwordNode = FocusNode();
-    passwordController = TextEditingController();
-
-    getNodeStatus();
-    getInterxRPCUrl();
-    readCachedData();
-    getTokens();
+    if (mounted) {
+      setState(() {
+        currentAccount = curAccount;
+        accountId = curAccount.encryptedMnemonic;
+        accountNameController.text = curAccount.name;
+      });
+    }
   }
 
   @override
@@ -186,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     html.Url.revokeObjectUrl(url);
   }
 
-  void onUpdate() {
+  void onUpdate() async {
     if (expireTimeController.text == null) return;
 
     int minutes = int.tryParse(expireTimeController.text);
@@ -221,17 +237,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       isError = false;
     });
 
-    _storageService.setExpireTime(Duration(minutes: minutes));
-    _storageService.setInterxRPCUrl(customInterxRPCUrl);
-    _storageService.setFeeAmount(feeAmount);
+    await _storageService.setExpireTime(Duration(minutes: minutes));
+    await _storageService.setInterxRPCUrl(customInterxRPCUrl);
+    await _storageService.setFeeAmount(feeAmount);
 
     Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
-    BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-    _storageService.setCurrentAccount(currentAccount.toJsonString());
+    await _accountService.setCurrentAccount(currentAccount);
 
     Token feeToken = tokens.where((e) => e.ticker == feeTokenTicker).toList()[0];
-    BlocProvider.of<TokenBloc>(context).add(SetFeeToken(feeToken));
-    _storageService.setFeeToken(feeToken.toString());
+    _tokenService.setFeeToken(feeToken);
   }
 
   @override
@@ -243,37 +257,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                    alignment: Alignment.center,
-                    margin: EdgeInsets.only(top: 50, bottom: 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 500),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            addAccounts(),
-                            addButtons(context),
-                            if (isEditEnabled) addAccountName(),
-                            if (isEditEnabled) addFinishButton(),
-                            addCustomRPC(),
-                            addRPCButtons(context),
-                            addErrorMessage(),
-                            if (tokens.length > 0) addFeeToken(),
-                            addFeeAmount(),
-                            addExpirePassword(),
-                            ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
-                            addGoBackButton(),
-                          ],
-                        )),
-                  ));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.only(top: 50, bottom: 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 500),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      addAccounts(),
+                      addButtons(context),
+                      if (isEditEnabled) addAccountName(),
+                      if (isEditEnabled) addFinishButton(),
+                      addCustomRPC(),
+                      addRPCButtons(context),
+                      addErrorMessage(),
+                      if (tokens.length > 0) addFeeToken(),
+                      addFeeAmount(),
+                      addExpirePassword(),
+                      ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
+                      addGoBackButton(),
+                    ],
+                  )),
+            )));
   }
 
   Widget addHeaderTitle() {
@@ -503,8 +513,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _storageService.setAccountData(updatedString);
 
                   Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
-                  BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-                  _storageService.setCurrentAccount(currentAccount.toJsonString());
+                  _accountService.setCurrentAccount(currentAccount);
 
                   setState(() {
                     isEditEnabled = false;

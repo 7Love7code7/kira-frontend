@@ -44,6 +44,11 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
     bool networkHealth = await _storageService.getNetworkHealth();
     NodeInfo nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
 
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
     if (mounted) {
       setState(() {
         if (nodeInfo != null && nodeInfo.network.isNotEmpty) {

@@ -46,9 +46,12 @@ class _TopBarContentsState extends State<TopBarContents> {
     String lastSearchedAccount = await _storageService.getLastSearchedAccount();
     if (lastSearchedAccount.isNotEmpty) navParam = "&addr=" + lastSearchedAccount;
     var topbarIndex = await _storageService.getTopbarIndex();
-    setState(() {
-      selectedIndex = topbarIndex;
-    });
+
+    if (mounted) {
+      setState(() {
+        selectedIndex = topbarIndex;
+      });
+    }
   }
 
   List<Widget> navItems(String nodeAddress) {
@@ -307,7 +310,10 @@ class _TopBarContentsState extends State<TopBarContents> {
                       // hoverColor: KiraColors.purple1,
                       // highlightColor: KiraColors.purple2,
                       onPressed: () {
-                        if (widget._loggedIn) {
+                        if (widget._loggedIn == true) {
+                          final _accountService = getIt<AccountService>();
+                          _accountService.setCurrentAccount(null);
+                        } else {
                           final _statusService = getIt<StatusService>();
                           _statusService.disconnect();
                           _storageService.setNetworkHealth(false);
@@ -316,8 +322,8 @@ class _TopBarContentsState extends State<TopBarContents> {
                           _storageService.setInterxRPCUrl("");
                           _storageService.setLiveRpcUrl("", "");
                           BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
-                          Navigator.pushReplacementNamed(context, '/login');
                         }
+                        Navigator.pushReplacementNamed(context, '/login');
                       },
                       // shape: RoundedRectangleBorder(
                       //     borderRadius: BorderRadius.circular(5), side: BorderSide(color: KiraColors.buttonBorder)),

@@ -67,9 +67,11 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
       nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
     }
 
-    setState(() {
-      isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
-    });
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
+      });
+    }
   }
 
   @override
@@ -222,7 +224,8 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
     );
   }
 
-  void onLogin() {
+  void onLogin() async {
+    final _storageService = getIt<StorageService>();
     // if (password == "") {
     //   this.setState(() {
     //     passwordError = Strings.passwordBlank;
@@ -260,12 +263,13 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
         Account account = Account.fromString(array[index]);
 
         if (account.encryptedMnemonic == mnemonic) {
-          BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(account));
+          final _accountService = getIt<AccountService>();
+          await _accountService.setCurrentAccount(account);
+
           BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(account.hexAddress));
 
-          final _storageService = getIt<StorageService>();
-          _storageService.setPassword('12345678');
-          _storageService.setLoginStatus(true);
+          await _storageService.setPassword('12345678');
+          await _storageService.setLoginStatus(true);
 
           Navigator.pushReplacementNamed(context, '/account');
           accountFound = true;

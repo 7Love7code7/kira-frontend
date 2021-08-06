@@ -135,51 +135,43 @@ class _BlocksScreenState extends State<BlocksScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1200),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            isFiltering ? addSearchHeader() : addTableHeader(),
-                            isFiltering
-                                ? (filteredBlock == null && filteredTransaction == null)
-                                    ? !searchSubmitted
-                                        ? Container()
-                                        : Container(
-                                            margin: EdgeInsets.only(top: 20, left: 20),
-                                            child: Text("No matching block or transaction",
-                                                style: TextStyle(
-                                                    color: KiraColors.white,
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold)))
-                                    : filteredBlock != null
-                                        ? addBlockInfo()
-                                        : addTransactionInfo()
-                                : moreLoading
-                                    ? addLoadingIndicator()
-                                    : blocks.isEmpty
-                                        ? Container(
-                                            margin: EdgeInsets.only(top: 20, left: 20),
-                                            child: Text("No blocks to show",
-                                                style: TextStyle(
-                                                    color: KiraColors.white,
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold)))
-                                        : addBlocksTable()
-                          ],
-                        ),
-                      )));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+                alignment: Alignment.center,
+                margin: EdgeInsets.only(top: 50, bottom: 50),
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1200),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      isFiltering ? addSearchHeader() : addTableHeader(),
+                      isFiltering
+                          ? (filteredBlock == null && filteredTransaction == null)
+                              ? !searchSubmitted
+                                  ? Container()
+                                  : Container(
+                                      margin: EdgeInsets.only(top: 20, left: 20),
+                                      child: Text("No matching block or transaction",
+                                          style: TextStyle(
+                                              color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                              : filteredBlock != null
+                                  ? addBlockInfo()
+                                  : addTransactionInfo()
+                          : moreLoading
+                              ? addLoadingIndicator()
+                              : blocks.isEmpty
+                                  ? Container(
+                                      margin: EdgeInsets.only(top: 20, left: 20),
+                                      child: Text("No blocks to show",
+                                          style: TextStyle(
+                                              color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                                  : addBlocksTable()
+                    ],
+                  ),
+                ))));
   }
 
   Widget addLoadingIndicator() {

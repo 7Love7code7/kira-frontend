@@ -1,18 +1,33 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:kira_auth/models/token.dart';
+import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
 
 class TokenService {
   final _storageService = getIt<StorageService>();
 
+  Token feeToken;
+  String currentAddress;
   List<Token> tokens = [];
   List<String> faucetTokens = [];
 
-  void initialize() {}
+  void initialize() async {
+    Account currentAccount = await _storageService.getCurrentAccount();
+    currentAddress = currentAccount.hexAddress;
+
+    tokens = await _storageService.getTokenBalance(currentAddress);
+    faucetTokens = await _storageService.getFaucetTokens();
+    feeToken = await _storageService.getFeeToken();
+  }
+
+  void setFeeToken(Token fToken) async {
+    feeToken = fToken;
+    await _storageService.setFeeToken(fToken.toString());
+  }
 
   Future<void> getTokens(String address) async {
+    currentAddress = address;
     List<Token> tokenList = [];
 
     var apiUrl = await _storageService.getLiveRpcUrl();
@@ -85,6 +100,7 @@ class TokenService {
     // }
 
     tokens = tokenList;
+    _storageService.setTokenBalance(address, jsonEncode(tokenList));
   }
 
   Future<String> faucet(String address, String token) async {
@@ -145,5 +161,6 @@ class TokenService {
     }
 
     faucetTokens = tokenList;
+    _storageService.setFaucetTokens(response.body);
   }
 }

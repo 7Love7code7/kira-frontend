@@ -4,17 +4,19 @@ enum ModelType { BLOCK, TRANSACTION, PROPOSAL }
 
 abstract class StorageService {
   Future setAccountData(String info);
+  Future<List<Account>> getAccountData();
   Future setCurrentAccount(String account);
-  Future<String> getCurrentAccount();
+  Future<Account> getCurrentAccount();
   Future removeCachedAccount();
   Future setFeeToken(String token);
-  Future<String> getFeeToken();
+  Future<Token> getFeeToken();
   Future removeFeeToken();
   Future<bool> setPassword(String password);
   Future<bool> removePassword();
   Future<String> getPassword();
   Future<bool> checkPasswordExists();
   Future setFeeAmount(int feeAmount);
+  Future<int> getFeeAmount();
   Future setExpireTime(Duration maxAge);
   Future<bool> removeExpireTime();
   Future<bool> checkExpireTime();
@@ -45,4 +47,9 @@ abstract class StorageService {
   Future<dynamic> getNodeStatusData(String _type);
   Future setNetworkHealth(bool _isNetworkHealthy);
   Future<bool> getNetworkHealth();
+  Future setTokenBalance(String address, String _balanceData);
+  Future<List<Token>> getTokenBalance(String address);
+
+  Future setFaucetTokens(String _faucetTokenData);
+  Future<List<String>> getFaucetTokens();
 }

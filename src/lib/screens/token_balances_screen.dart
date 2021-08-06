@@ -4,13 +4,11 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:convert/convert.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
@@ -22,13 +20,13 @@ class TokenBalanceScreen extends StatefulWidget {
 
 class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   final _storageService = getIt<StorageService>();
+  final _tokenService = getIt<TokenService>();
   final _networkService = getIt<NetworkService>();
+  final _accountService = getIt<AccountService>();
 
   List<Validator> validators = [];
   List<Validator> filteredValidators = [];
   String query = "";
-
-  final _tokenService = getIt<TokenService>();
 
   final _transactionService = getIt<TransactionService>();
   String notification = '';
@@ -69,25 +67,50 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   void getFaucetTokens() async {
     bool _isLoggedIn = await _storageService.getLoginStatus();
 
+    Account curAccount;
     if (_isLoggedIn) {
-      currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
+      curAccount = _accountService.currentAccount;
+      if (curAccount == null) {
+        curAccount = await _storageService.getCurrentAccount();
+      }
     }
 
-    if (currentAccount != null && mounted) {
-      await _tokenService.getAvailableFaucetTokens();
-      await _tokenService.getTokens(currentAccount.bech32Address);
-      setState(() {
-        tokens = _tokenService.tokens;
-        faucetTokens = _tokenService.faucetTokens;
-        faucetToken = faucetTokens.length > 0 ? faucetTokens[0] : null;
+    if (curAccount != null) {
+      List<String> _faucetTokens = _tokenService.faucetTokens;
 
-        for (int i = 0; i < tokens.length; i++) {
-          if (tokens[i].ticker.toUpperCase() == "KEX") {
-            this.kexBalance = tokens[i].getTokenBalanceInTicker;
-            return;
+      if (_faucetTokens.length == 0) {
+        _faucetTokens = await _storageService.getFaucetTokens();
+      }
+
+      if (_faucetTokens.length == 0) {
+        await _tokenService.getAvailableFaucetTokens();
+      }
+
+      List<Token> _tokenBalance = _tokenService.tokens;
+
+      if (_tokenBalance.length == 0) {
+        _tokenBalance = await _storageService.getTokenBalance(curAccount.bech32Address);
+      }
+
+      if (_tokenBalance.length == 0) {
+        await _tokenService.getTokens(curAccount.bech32Address);
+      }
+
+      if (mounted) {
+        setState(() {
+          currentAccount = curAccount;
+          tokens = _tokenBalance;
+          faucetTokens = _faucetTokens;
+          faucetToken = faucetTokens.length > 0 ? faucetTokens[0] : null;
+
+          for (int i = 0; i < _tokenBalance.length; i++) {
+            if (_tokenBalance[i].ticker.toUpperCase() == "KEX") {
+              kexBalance = _tokenBalance[i].getTokenBalanceInTicker;
+              break;
+            }
           }
-        }
-      });
+        });
+      }
     }
   }
 
@@ -139,18 +162,12 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     if (mounted) {
       setState(() {
         if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
-          if (this.customInterxRPCUrl != "") {
-            setState(() {
-              if (!networkIds.contains(nodeInfo.network)) {
-                networkIds.add(nodeInfo.network);
-              }
-              networkId = nodeInfo.network;
-              isNetworkHealthy = networkHealth;
-            });
-            this.customInterxRPCUrl = "";
+          if (!networkIds.contains(nodeInfo.network)) {
+            networkIds.add(nodeInfo.network);
           }
-          checkAddress();
-          getFaucetTokens();
+          networkId = nodeInfo.network;
+          isNetworkHealthy = networkHealth;
+          customInterxRPCUrl = "";
         } else {
           isNetworkHealthy = false;
         }
@@ -330,7 +347,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
     Map<String, String> params = uri.queryParameters; // query parameters automatically populated
 
-    if (params.containsKey("rpc")) {
+    if (params.containsKey("rpc") && mounted) {
       customInterxRPCUrl = params['rpc'];
 
       setState(() {
@@ -361,8 +378,10 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
       });
     }
 
-    getInterxURL();
     getNodeStatus();
+    getInterxURL();
+    getFaucetTokens();
+    checkAddress();
     searchController = TextEditingController();
   }
 
@@ -375,45 +394,41 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 20, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1000),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            !isLoggedIn ? addSearchInput() : Container(),
-                            SizedBox(height: 10),
-                            !isTyping && query != "" ? addHeaderTitle() : Container(),
-                            isValidAddress ? addAccountAddress() : Container(),
-                            isValidAddress ? addAccountBalance() : Container(),
-                            isValidAddress ? Wrap(children: tabItems()) : Container(),
-                            isValidAddress && tabType == 0
-                                ? Align(alignment: Alignment.center, child: qrCode())
-                                : Container(),
-                            // (isLoggedIn || isValidAddress) ? addTableHeader() : Container(),
-                            isValidAddress && tabType == 0 ? addDepositTransactionsTable() : Container(),
-                            isValidAddress && tabType == 1 ? addWithdrawalTransactionsTable() : Container(),
-                            (isLoggedIn || (isValidAddress && tabType == 2))
-                                ? (tokens.isEmpty)
-                                    ? Container(
-                                        margin: EdgeInsets.only(top: 20, left: 20),
-                                        child: Text("No tokens",
-                                            style: TextStyle(
-                                                color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                    : addTokenTable()
-                                : Container(),
-                          ],
-                        ),
-                      )));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+                alignment: Alignment.center,
+                margin: EdgeInsets.only(top: 20, bottom: 50),
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1000),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      !isLoggedIn ? addSearchInput() : Container(),
+                      SizedBox(height: 10),
+                      !isTyping && query != "" ? addHeaderTitle() : Container(),
+                      isValidAddress ? addAccountAddress() : Container(),
+                      isValidAddress ? addAccountBalance() : Container(),
+                      isValidAddress ? Wrap(children: tabItems()) : Container(),
+                      isValidAddress && tabType == 0
+                          ? Align(alignment: Alignment.center, child: qrCode())
+                          : Container(),
+                      // (isLoggedIn || isValidAddress) ? addTableHeader() : Container(),
+                      isValidAddress && tabType == 0 ? addDepositTransactionsTable() : Container(),
+                      isValidAddress && tabType == 1 ? addWithdrawalTransactionsTable() : Container(),
+                      (isLoggedIn || (isValidAddress && tabType == 2))
+                          ? (tokens.isEmpty)
+                              ? Container(
+                                  margin: EdgeInsets.only(top: 20, left: 20),
+                                  child: Text("No tokens",
+                                      style: TextStyle(
+                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                              : addTokenTable()
+                          : Container(),
+                    ],
+                  ),
+                ))));
   }
 
   Widget qrCode() {

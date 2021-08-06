@@ -47,20 +47,26 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
 
     // setTopBarStatus(true);
     getNodeStatus();
-    if (mounted) {
-      if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-        currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-      }
-      if (BlocProvider.of<TokenBloc>(context).state.feeToken != null) {
-        feeToken = BlocProvider.of<TokenBloc>(context).state.feeToken;
-      }
-      getCachedFeeAmount();
-      if (feeToken == null) {
-        getFeeToken();
-      }
+    getCachedFeeAmount();
+    getFeeToken();
+    getCurrentAccount();
+    getProposals(false);
+  }
+
+  getCurrentAccount() async {
+    final _accountService = getIt<AccountService>();
+    final _storageService = getIt<StorageService>();
+    Account curAccount = _accountService.currentAccount;
+
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
     }
 
-    getProposals(false);
+    if (mounted) {
+      setState(() {
+        currentAccount = curAccount;
+      });
+    }
   }
 
   void getProposals(bool loadNew) async {
@@ -92,9 +98,11 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
       nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
     }
 
-    setState(() {
-      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
-    });
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+      });
+    }
   }
 
   void getCachedFeeAmount() async {
@@ -109,49 +117,49 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   }
 
   void getFeeToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      String feeTokenString = prefs.getString('FEE_TOKEN');
-      if (feeTokenString.runtimeType != Null) {
-        feeToken = Token.fromString(feeTokenString);
-      } else {
-        feeToken = Token(assetName: "Kira", ticker: 'KEX', denomination: "ukex", decimals: 6);
-      }
-    });
+    final _storageService = getIt<StorageService>();
+    final _tokenService = getIt<TokenService>();
+    Token fToken = _tokenService.feeToken;
+
+    if (fToken == null) {
+      fToken = await _storageService.getFeeToken();
+    }
+
+    if (mounted) {
+      setState(() {
+        feeToken = fToken;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1200),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeader(),
-                            addTableHeader(),
-                            moreLoading
-                                ? addLoadingIndicator()
-                                : proposals.isEmpty
-                                    ? Container(
-                                        margin: EdgeInsets.only(top: 20, left: 20),
-                                        child: Text("No proposals to show",
-                                            style: TextStyle(
-                                                color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                    : addProposalsTable(),
-                          ],
-                        ),
-                      )));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+                alignment: Alignment.center,
+                margin: EdgeInsets.only(top: 50, bottom: 50),
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1200),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeader(),
+                      addTableHeader(),
+                      moreLoading
+                          ? addLoadingIndicator()
+                          : proposals.isEmpty
+                              ? Container(
+                                  margin: EdgeInsets.only(top: 20, left: 20),
+                                  child: Text("No proposals to show",
+                                      style: TextStyle(
+                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                              : addProposalsTable(),
+                    ],
+                  ),
+                ))));
   }
 
   Widget addLoadingIndicator() {

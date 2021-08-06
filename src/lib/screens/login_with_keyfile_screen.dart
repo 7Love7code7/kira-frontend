@@ -257,7 +257,7 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
         ));
   }
 
-  void onLoginClick() {
+  void onLoginClick() async {
     if (password == "") {
       this.setState(() {
         error = Strings.passwordBlank;
@@ -279,16 +279,17 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
     }
 
     if (decryptAESCryptoJS(account.checksum, secretKey) == 'kira') {
-      BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(account));
+      final _accountService = getIt<AccountService>();
+      await _accountService.setCurrentAccount(account);
       BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(account.hexAddress));
 
       account.encryptedMnemonic = decryptAESCryptoJS(account.encryptedMnemonic, secretKey);
       account.checksum = decryptAESCryptoJS(account.checksum, secretKey);
 
       final _storageService = getIt<StorageService>();
-      _storageService.setAccountData(account.toJsonString());
-      _storageService.setPassword(password);
-      _storageService.setLoginStatus(true);
+      await _storageService.setAccountData(account.toJsonString());
+      await _storageService.setPassword(password);
+      await _storageService.setLoginStatus(true);
 
       Navigator.pushReplacementNamed(context, '/account');
     } else {
