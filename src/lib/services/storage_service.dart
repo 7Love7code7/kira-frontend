@@ -49,7 +49,8 @@ abstract class StorageService {
   Future<bool> getNetworkHealth();
   Future setTokenBalance(String address, String _balanceData);
   Future<List<Token>> getTokenBalance(String address);
-
+  Future setTransactions(String address, String _txData);
+  Future<List<Transaction>> getTransactions(String address);
   Future setFaucetTokens(String _faucetTokenData);
   Future<List<String>> getFaucetTokens();
 }

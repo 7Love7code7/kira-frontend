@@ -20,6 +20,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
   final _statusService = getIt<StatusService>();
   final _storageService = getIt<StorageService>();
   final _tokenService = getIt<TokenService>();
+  final _transactionService = getIt<TransactionService>();
   final _accountService = getIt<AccountService>();
 
   Timer timer;
@@ -52,6 +53,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
       _statusService.initialize();
       _tokenService.initialize();
       _accountService.initialize();
+      _transactionService.initialize();
 
       currentAccount = _accountService.currentAccount;
       if (currentAccount != null) {
@@ -73,7 +75,9 @@ class _GlobalScreenState extends State<GlobalScreen> {
     await _tokenService.getAvailableFaucetTokens();
     if (currentAccount != null) {
       await _tokenService.getTokens(currentAccount.bech32Address);
+      await _transactionService.getTransactions(currentAccount.bech32Address);
     }
+
     print("--- SOS --- ${rpcUrl[0]}");
   }
 

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipboard/clipboard.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -9,7 +8,6 @@ import 'package:jdenticon/jdenticon.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
 
@@ -19,8 +17,9 @@ class DepositScreen extends StatefulWidget {
 }
 
 class _DepositScreenState extends State<DepositScreen> {
-  final _gravatarService = getIt<GravatarService>();
+  final _storageService = getIt<StorageService>();
   final _transactionService = getIt<TransactionService>();
+  final _accountService = getIt<AccountService>();
 
   Account currentAccount;
   Timer timer;
@@ -46,7 +45,6 @@ class _DepositScreenState extends State<DepositScreen> {
     this.copied2 = false;
 
     getNodeStatus();
-    getCurrentAccount();
     getDepositTransactions();
   }
 
@@ -84,27 +82,42 @@ class _DepositScreenState extends State<DepositScreen> {
     }
   }
 
-  getCurrentAccount() async {
-    final _storageService = getIt<StorageService>();
-    Account curAccount = await _storageService.getCurrentAccount();
+  getDepositTransactions() async {
+    Account curAccount;
+    curAccount = _accountService.currentAccount;
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
 
     if (mounted) {
       setState(() {
         currentAccount = curAccount;
-        depositController.text = currentAccount != null ? currentAccount.bech32Address : '';
+        depositController.text = curAccount != null ? curAccount.bech32Address : '';
       });
     }
-  }
 
-  getDepositTransactions() async {
-    if (currentAccount != null) {
-      List<Transaction> wTxs =
-          await _transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: false);
+    if (curAccount != null) {
+      List<Transaction> _transactions = _transactionService.transactions;
 
-      setState(() {
-        initialFetched = true;
-        transactions = wTxs;
-      });
+      if (_transactions.length == 0) {
+        _transactions = await _storageService.getTransactions(curAccount.bech32Address);
+      }
+
+      if (_transactions.length == 0) {
+        bool result = await _transactionService.getTransactions(curAccount.bech32Address);
+        if (!result)
+          setState(() {
+            initialFetched = false;
+          });
+        _transactions = _transactionService.transactions;
+      }
+
+      if (mounted) {
+        setState(() {
+          transactions = _transactions.where((element) => element.action == "Deposit").toList();
+          initialFetched = true;
+        });
+      }
     }
   }
 
@@ -308,8 +321,6 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   Widget addGravatar(BuildContext context) {
-    // final String gravatar = _gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
-
     final String reducedAddress =
         currentAccount.bech32Address.replaceRange(10, currentAccount.bech32Address.length - 7, '....');
 

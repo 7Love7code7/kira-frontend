@@ -3,14 +3,11 @@ import 'dart:html' as html;
 import 'dart:convert';
 import 'package:blake_hash/blake_hash.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/service_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -104,19 +101,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void getTokens() async {
     Token feeToken = await _storageService.getFeeToken();
 
-    if (currentAccount != null && mounted) {
-      if (_tokenService.tokens.length == 0) {
-        await _tokenService.getTokens(currentAccount.bech32Address);
+    Account curAccount;
+    curAccount = _accountService.currentAccount;
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (curAccount != null) {
+      List<Token> _tokenBalance = _tokenService.tokens;
+
+      if (_tokenBalance.length == 0) {
+        _tokenBalance = await _storageService.getTokenBalance(curAccount.bech32Address);
       }
 
-      setState(() {
-        tokens = _tokenService.tokens;
-        feeTokenTicker = feeToken != null
-            ? feeToken.ticker
-            : _tokenService.tokens.length > 0
-                ? tokens[0].ticker
-                : null;
-      });
+      if (_tokenBalance.length == 0) {
+        await _tokenService.getTokens(curAccount.bech32Address);
+        _tokenBalance = _tokenService.tokens;
+      }
+
+      if (mounted) {
+        setState(() {
+          tokens = _tokenBalance;
+          feeTokenTicker = feeToken != null
+              ? feeToken.ticker
+              : _tokenBalance.length > 0
+                  ? _tokenBalance[0].ticker
+                  : null;
+        });
+      }
     }
   }
 

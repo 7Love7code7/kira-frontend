@@ -384,6 +384,30 @@ class SharedPreferencesStorage extends StorageService {
   }
 
   @override
+  Future setTransactions(String address, String _txData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString("TRANSACTION_${address}", _txData);
+  }
+
+  @override
+  Future<List<Transaction>> getTransactions(String address) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String txString = prefs.getString('TRANSACTION_${address}');
+    if (txString == null || txString == "") {
+      return [];
+    }
+
+    List<Transaction> _transactions = [];
+    List<dynamic> decodedResult = jsonDecode(txString);
+
+    for (int i = 0; i < decodedResult.length; i++) {
+      _transactions.add(Transaction.fromJson(decodedResult[i]));
+    }
+
+    return _transactions;
+  }
+
+  @override
   Future setTokenBalance(String address, String _balanceData) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setString("BALANCE_${address}", _balanceData);

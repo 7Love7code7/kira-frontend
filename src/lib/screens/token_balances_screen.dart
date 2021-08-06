@@ -64,7 +64,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   var apiUrl;
   var isSearchFinished = false;
 
-  void getFaucetTokens() async {
+  void getTokens() async {
     bool _isLoggedIn = await _storageService.getLoginStatus();
 
     Account curAccount;
@@ -94,6 +94,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
       if (_tokenBalance.length == 0) {
         await _tokenService.getTokens(curAccount.bech32Address);
+        _tokenBalance = _tokenService.tokens;
       }
 
       if (mounted) {
@@ -185,16 +186,16 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
     Map<String, String> params = uri.queryParameters; // query parameters automatically populated
 
-    if (params.containsKey("addr")) {
-      this.query = params['addr'];
-    }
-    if (params.containsKey("type")) {
-      String pageType = params['type'];
+    if (params.containsKey("addr") == false) return;
+    this.query = params['addr'];
 
-      setState(() {
-        this.tabType = int.parse(pageType);
-      });
-    }
+    if (params.containsKey("type") == false) return;
+
+    String pageType = params['type'];
+
+    setState(() {
+      this.tabType = int.parse(pageType);
+    });
 
     String hexAddress = "";
 
@@ -210,11 +211,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           privateKey: "",
           publicKey: "");
 
-      this.depositTrx =
-          await _transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: false);
-
-      this.withdrawTrx =
-          await _transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: true);
+      getTransactions(currentAccount);
 
       setState(() {
         if (depositTrx.isEmpty) {
@@ -337,6 +334,20 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     return Uint8List.fromList(result);
   }
 
+  void getTransactions(Account curAccount) async {
+    if (curAccount != null) {
+      List<Transaction> _dTransactions = await _transactionService.fetchTransactions(curAccount.bech32Address, false);
+      List<Transaction> _wTransactions = await _transactionService.fetchTransactions(curAccount.bech32Address, true);
+
+      if (mounted) {
+        setState(() {
+          depositTrx = _dTransactions;
+          withdrawTrx = _wTransactions;
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -380,7 +391,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
     getNodeStatus();
     getInterxURL();
-    getFaucetTokens();
+    getTokens();
     checkAddress();
     searchController = TextEditingController();
   }
@@ -419,11 +430,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                       isValidAddress && tabType == 1 ? addWithdrawalTransactionsTable() : Container(),
                       (isLoggedIn || (isValidAddress && tabType == 2))
                           ? (tokens.isEmpty)
-                              ? Container(
-                                  margin: EdgeInsets.only(top: 20, left: 20),
-                                  child: Text("No tokens",
-                                      style: TextStyle(
-                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                              ? addLoadingIndicator()
                               : addTokenTable()
                           : Container(),
                     ],
@@ -456,6 +463,18 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         size: 300,
       ),
     );
+  }
+
+  Widget addLoadingIndicator() {
+    return Container(
+        alignment: Alignment.center,
+        child: Container(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
+        ));
   }
 
   Widget addSearchInput() {
