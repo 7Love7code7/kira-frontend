@@ -362,7 +362,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     }
 
     getInterxURL();
-    Future.delayed(const Duration(seconds: 2), getNodeStatus);
+    Future.delayed(const Duration(seconds: 1), getNodeStatus);
     searchController = TextEditingController();
   }
 
@@ -756,7 +756,11 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
   Widget addTableHeader() {
     List<String> titles = (!isLoggedIn && tabType < 2)
-        ? [
+        ? ResponsiveWidget.isSmallScreen(context) ? [
+            'Tx Hash',
+            ['Sender', 'Recipient'][tabType],
+            'Status'
+            ] : [
             'Tx Hash',
             ['Sender', 'Recipient'][tabType],
             'Amount',
@@ -846,8 +850,13 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
       withdrawTrx.sort((a, b) => isAscending ? a.recipient.compareTo(b.recipient) : b.sender.compareTo(a.recipient));
       tokens.sort((a, b) => isAscending ? a.balance.compareTo(b.balance) : b.balance.compareTo(a.balance));
     } else if (sortIndex == 2) {
-      depositTrx.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
-      withdrawTrx.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+      if (ResponsiveWidget.isSmallScreen(context)) {
+        depositTrx.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+        withdrawTrx.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+      } else {
+        depositTrx.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+        withdrawTrx.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+      }
     } else if (sortIndex == 3) {
       depositTrx.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
       withdrawTrx.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));

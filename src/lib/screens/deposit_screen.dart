@@ -178,7 +178,8 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   Widget addTableHeader() {
-    List<String> titles = ['Tx Hash', 'Sender', 'Amount', 'Time', 'Status'];
+    List<String> titles = ResponsiveWidget.isSmallScreen(context) ? ['Tx Hash', 'Sender', 'Status']
+        : ['Tx Hash', 'Sender', 'Amount', 'Time', 'Status'];
     List<int> flexes = [2, 2, 1, 1, 1];
 
     return Container(
@@ -455,7 +456,10 @@ class _DepositScreenState extends State<DepositScreen> {
     } else if (sortIndex == 1) {
       transactions.sort((a, b) => isAscending ? a.sender.compareTo(b.sender) : b.sender.compareTo(a.sender));
     } else if (sortIndex == 2) {
-      transactions.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+      if (ResponsiveWidget.isSmallScreen(context))
+        transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+      else
+        transactions.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
     } else if (sortIndex == 3) {
       transactions.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
     } else {

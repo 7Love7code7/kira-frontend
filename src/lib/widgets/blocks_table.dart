@@ -180,10 +180,10 @@ class _BlocksTableState extends State<BlocksTable> {
                               ),
                               child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Container())),
                           SizedBox(width: 5),
-                          Text(block.getProposer,
-                              overflow: TextOverflow.ellipsis,
+                          Flexible(child: Text(block.getProposer,
                               maxLines: 2,
-                              style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16))
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16)))
                         ])),
                     SizedBox(width: 10),
                     Expanded(

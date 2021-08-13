@@ -206,7 +206,7 @@ class _BlocksScreenState extends State<BlocksScreen> {
               ? Column(
                   children: <Widget>[
                     Container(
-                        margin: EdgeInsets.only(bottom: 20),
+                        margin: EdgeInsets.only(bottom: 10),
                         child: Text(
                           Strings.blocks,
                           textAlign: TextAlign.left,

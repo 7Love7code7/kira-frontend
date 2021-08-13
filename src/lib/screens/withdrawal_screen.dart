@@ -237,7 +237,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   Widget addTableHeader() {
-    List<String> titles = ['Tx Hash', 'Recipient', 'Amount', 'Time', 'Status'];
+    List<String> titles = ResponsiveWidget.isSmallScreen(context) ? ['Tx Hash', 'Recipient', 'Status']
+        : ['Tx Hash', 'Recipient', 'Amount', 'Time', 'Status'];
     List<int> flexes = [2, 2, 1, 1, 1];
 
     return Container(
@@ -1084,7 +1085,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     } else if (sortIndex == 1) {
       transactions.sort((a, b) => isAscending ? a.recipient.compareTo(b.recipient) : b.sender.compareTo(a.recipient));
     } else if (sortIndex == 2) {
-      transactions.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+      if (ResponsiveWidget.isSmallScreen(context))
+        transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+      else
+        transactions.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
     } else if (sortIndex == 3) {
       transactions.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
     } else {

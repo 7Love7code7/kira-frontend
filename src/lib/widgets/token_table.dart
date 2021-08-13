@@ -206,22 +206,23 @@ class TokenTableState extends State<TokenTable> {
                             width: 32,
                             height: 32),
                         SizedBox(width: 15),
-                        Text(
-                          token.assetName,
+                        Flexible(child: Text(token.assetName,
                           textAlign: TextAlign.start,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16),
-                        )
+                        ))
                       ],
                     )),
                 Expanded(
                     flex: 2,
                     child: Align(
                         alignment: Alignment.centerLeft,
-                        child: Text(
+                        child: Flexible(child: Text(
                           token.getTokenBalanceInTicker.toString() + " " + token.ticker,
                           textAlign: TextAlign.left,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16),
-                        ))),
+                        )))),
                 ExpandableIcon(
                   theme: const ExpandableThemeData(
                     expandIcon: Icons.arrow_right,

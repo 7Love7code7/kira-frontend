@@ -331,6 +331,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   width: fieldWidth,
                   child: Text(
                       "Website",
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
@@ -346,12 +347,16 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   width: fieldWidth,
                   child: Text(
                       "Social",
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
               ),
               SizedBox(width: 20),
-              Text(validator.checkUnknownWith("social"), overflow: TextOverflow.ellipsis, style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14)),
+              Flexible(child: Text(validator.checkUnknownWith("social"),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+              ),
             ],
           ),
           SizedBox(height: 10),
@@ -361,6 +366,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   width: fieldWidth,
                   child: Text(
                       "Identity",
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
@@ -376,6 +382,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   width: fieldWidth,
                   child: Text(
                       "Streak",
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
@@ -392,6 +399,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   child: Text(
                       "Mischance",
                       textAlign: TextAlign.right,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
               ),
