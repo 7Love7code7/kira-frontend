@@ -23,6 +23,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
   List<Validator> validators = [];
   String query = "";
   bool moreLoading = false;
+  Account currentAccount;
 
   List<String> favoriteValidators = [];
   int expandedTop = -1;
@@ -70,9 +71,27 @@ class _NetworkScreenState extends State<NetworkScreen> {
 
     getNodeStatus();
     getValidators();
+    getCurrentAccount();
+
     timer = Timer.periodic(Duration(minutes: 2), (timer) {
       getValidators();
     });
+  }
+
+  getCurrentAccount() async {
+    final _accountService = getIt<AccountService>();
+    final _storageService = getIt<StorageService>();
+    Account curAccount = _accountService.currentAccount;
+
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (mounted) {
+      setState(() {
+        currentAccount = curAccount;
+      });
+    }
   }
 
   void getValidators() async {
@@ -153,35 +172,31 @@ class _NetworkScreenState extends State<NetworkScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1200),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeader(),
-                            addTableHeader(),
-                            moreLoading
-                                ? addLoadingIndicator()
-                                : validators.isEmpty
-                                    ? Container(
-                                        margin: EdgeInsets.only(top: 20, left: 20),
-                                        child: Text("No validators to show",
-                                            style: TextStyle(
-                                                color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                    : addValidatorsTable(),
-                          ],
-                        ),
-                      )));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+                alignment: Alignment.center,
+                margin: EdgeInsets.only(top: 50, bottom: 50),
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1200),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeader(),
+                      addTableHeader(),
+                      moreLoading
+                          ? addLoadingIndicator()
+                          : validators.isEmpty
+                              ? Container(
+                                  margin: EdgeInsets.only(top: 20, left: 20),
+                                  child: Text("No validators to show",
+                                      style: TextStyle(
+                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                              : addValidatorsTable(),
+                    ],
+                  ),
+                ))));
   }
 
   Widget addLoadingIndicator() {
@@ -454,8 +469,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
               onChangeLikes: (top) {
                 var index = validators.indexWhere((element) => element.top == top);
                 if (index >= 0) {
-                  var currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-
                   BlocProvider.of<ValidatorBloc>(context)
                       .add(ToggleFavoriteAddress(validators[index].address, currentAccount.hexAddress));
                   this.setState(() {

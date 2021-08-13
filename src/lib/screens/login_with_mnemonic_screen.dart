@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
@@ -17,42 +16,24 @@ class LoginWithMnemonicScreen extends StatefulWidget {
 }
 
 class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
-  String cachedAccountString;
-  // String password = "";
   String mnemonicError = "";
   bool isNetworkHealthy = false;
 
-  // String passwordError = "";
-  // FocusNode passwordFocusNode;
-  // TextEditingController passwordController;
-
   FocusNode mnemonicFocusNode;
   TextEditingController mnemonicController;
-
-  void getCachedAccountString() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      cachedAccountString = prefs.getString('ACCOUNTS');
-    });
-  }
 
   @override
   void initState() {
     super.initState();
 
     mnemonicFocusNode = FocusNode();
-    // passwordFocusNode = FocusNode();
-
     mnemonicController = TextEditingController();
-    // passwordController = TextEditingController();
 
     getNodeStatus();
-    getCachedAccountString();
   }
 
   @override
   void dispose() {
-    // passwordController.dispose();
     mnemonicController.dispose();
     super.dispose();
   }
@@ -67,22 +48,15 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
       nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
     }
 
-    setState(() {
-      isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
-    });
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // final Map arguments = ModalRoute.of(context).settings.arguments as Map;
-
-    // // Set password from param
-    // if (arguments != null && password == '') {
-    //   setState(() {
-    //     password = arguments['PASSWORD'];
-    //   });
-    // }
-
     return Scaffold(
         body: HeaderWrapper(
             isNetworkHealthy: isNetworkHealthy,
@@ -97,7 +71,6 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
                     children: <Widget>[
                       addHeaderTitle(),
                       addDescription(),
-                      // addPassword(),
                       addMnemonic(),
                       ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
                       ResponsiveWidget.isSmallScreen(context) ? SizedBox(height: 20) : SizedBox(height: 150),
@@ -128,53 +101,6 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
           ))
         ]));
   }
-
-  // Widget addPassword() {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.stretch,
-  //     children: [
-  //       AppTextField(
-  //         hintText: Strings.password,
-  //         labelText: Strings.password,
-  //         focusNode: passwordFocusNode,
-  //         controller: passwordController,
-  //         textInputAction: TextInputAction.done,
-  //         maxLines: 1,
-  //         autocorrect: false,
-  //         keyboardType: TextInputType.text,
-  //         obscureText: true,
-  //         textAlign: TextAlign.left,
-  //         onChanged: (String text) {
-  //           if (text != "") {
-  //             setState(() {
-  //               passwordError = '';
-  //               password = text;
-  //             });
-  //           }
-  //         },
-  //         style: TextStyle(
-  //           fontWeight: FontWeight.w700,
-  //           fontSize: 23.0,
-  //           color: KiraColors.white,
-  //           fontFamily: 'NunitoSans',
-  //         ),
-  //       ),
-  //       SizedBox(height: 10),
-  //       Container(
-  //         alignment: AlignmentDirectional(0, 0),
-  //         margin: EdgeInsets.only(top: 3),
-  //         child: Text(this.passwordError == null ? "" : passwordError,
-  //             style: TextStyle(
-  //               fontSize: 13.0,
-  //               color: KiraColors.kYellowColor,
-  //               fontFamily: 'NunitoSans',
-  //               fontWeight: FontWeight.w600,
-  //             )),
-  //       ),
-  //       SizedBox(height: 10),
-  //     ],
-  //   );
-  // }
 
   Widget addMnemonic() {
     return Column(
@@ -222,12 +148,8 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
     );
   }
 
-  void onLogin() {
-    // if (password == "") {
-    //   this.setState(() {
-    //     passwordError = Strings.passwordBlank;
-    //   });
-    // }
+  void onLogin() async {
+    final _storageService = getIt<StorageService>();
 
     String mnemonic = mnemonicController.text;
 
@@ -239,37 +161,21 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
       return;
     }
 
-    if (cachedAccountString == null) {
+    List<Account> accounts = await _storageService.getAccountData();
+    if (accounts.length == 0) {
       setState(() {
         mnemonicError = Strings.createAccountError;
       });
       return;
     }
 
-    // List<int> bytes = utf8.encode(password);
-
-    // // Get hash value of password and use it to encrypt mnemonic
-    // var hashDigest = Blake256().update(bytes).digest();
-    // String secretKey = String.fromCharCodes(hashDigest);
-
-    var array = cachedAccountString.split('---');
     bool accountFound = false;
+    Account fAccount;
 
-    for (int index = 0; index < array.length; index++) {
-      if (array[index].length > 5) {
-        Account account = Account.fromString(array[index]);
-
-        if (account.encryptedMnemonic == mnemonic) {
-          BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(account));
-          BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(account.hexAddress));
-
-          final _storageService = getIt<StorageService>();
-          _storageService.setPassword('12345678');
-          _storageService.setLoginStatus(true);
-
-          Navigator.pushReplacementNamed(context, '/account');
-          accountFound = true;
-        }
+    for (int i = 0; i < accounts.length; i++) {
+      if (accounts[i].encryptedMnemonic == mnemonic) {
+        fAccount = accounts[i];
+        accountFound = true;
       }
     }
 
@@ -277,6 +183,16 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
       setState(() {
         mnemonicError = Strings.mnemonicWrong;
       });
+    } else {
+      final _accountService = getIt<AccountService>();
+      await _accountService.setCurrentAccount(fAccount);
+
+      BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(fAccount.hexAddress));
+
+      await _storageService.setPassword('12345678');
+      await _storageService.setLoginStatus(true);
+
+      Navigator.pushReplacementNamed(context, '/account');
     }
   }
 

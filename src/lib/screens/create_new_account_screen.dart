@@ -13,7 +13,6 @@ import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/blocs/export.dart';
-import 'package:kira_auth/data/account_repository.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
 
@@ -25,7 +24,6 @@ class CreateNewAccountScreen extends StatefulWidget {
 }
 
 class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
-  IAccountRepository accountRepository = IAccountRepository();
   bool isNetworkHealthy = false;
   bool passwordsMatch, loading = false, mnemonicShown = false;
 
@@ -88,9 +86,11 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
       nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
     }
 
-    setState(() {
-      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
-    });
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+      });
+    }
   }
 
   @override
@@ -444,7 +444,6 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
                   final _storageService = getIt<StorageService>();
                   _storageService.setAccountData(currentAccount.toJsonString());
 
-                  BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
                   BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
 
                   final text = currentAccount.toJsonString();
@@ -667,43 +666,21 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
     );
   }
 
-/*
-  void passwordValidation() {
-    if (createPasswordController.text.isEmpty || confirmPasswordController.text.isEmpty) {
-      if (mounted) {
-        setState(() {
-          passwordError = Strings.passwordBlank;
-        });
-      }
-    } else if (createPasswordController.text != confirmPasswordController.text) {
-      if (mounted) {
-        setState(() {
-          passwordError = Strings.passwordDontMatch;
-        });
-      }
-    } else if (createPasswordController.text.length < 5) {
-      if (mounted) {
-        setState(() {
-          passwordError = Strings.passwordLengthShort;
-        });
-      }
-    }
-  }
-*/
   Future<void> submitAndEncrypt(BuildContext context) async {
     // Create new account
+    AccountService _accountService = getIt<AccountService>();
     if (passwordsMatch == true) {
-      accountRepository.createNewAccount(createPasswordController.text, accountNameController.text).then((account) {
-        // BlocProvider.of<AccountBloc>(context)
-        //     .add(CreateNewAccount(currentAccount);
-        setState(() {
-          loading = false;
-          passwordError = "";
-          currentAccount = account;
-          mnemonic = decryptAESCryptoJS(currentAccount.encryptedMnemonic, currentAccount.secretKey);
-          wordList = mnemonic.split(' ');
-        });
+      Account account =
+          await _accountService.createNewAccount(createPasswordController.text, accountNameController.text);
+
+      setState(() {
+        loading = false;
+        passwordError = "";
+        currentAccount = account;
+        mnemonic = decryptAESCryptoJS(account.encryptedMnemonic, account.secretKey);
+        wordList = mnemonic.split(' ');
       });
+      ;
     }
   }
 }

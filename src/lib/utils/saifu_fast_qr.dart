@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_swiper/flutter_swiper.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -74,6 +73,7 @@ class SaifuFastQR extends StatefulWidget {
 class _SaifuFastQRState extends State<SaifuFastQR> {
   @override
   void initState() {
+    super.initState();
     //handleQRData();
     //print(widget.data);
     //widget.frameData = jsonEncode(widget.data);
@@ -83,7 +83,6 @@ class _SaifuFastQRState extends State<SaifuFastQR> {
     //print(widget.stdMsgData);
 
     //processData(widget.data, 100);
-    super.initState();
   }
 
   void handleQRData() {
@@ -102,11 +101,7 @@ class _SaifuFastQRState extends State<SaifuFastQR> {
     List<String> stdFrame = [];
     for (var i = 0; i < list.length; i++) {
       var pageCount = i + 1;
-      var framesData = {
-        "max": "${list.length}",
-        "page": pageCount,
-        "data": list[i]
-      };
+      var framesData = {"max": "${list.length}", "page": pageCount, "data": list[i]};
       var jsonFrame = jsonEncode(framesData);
       stdFrame.add(jsonFrame);
     }
@@ -186,9 +181,11 @@ class _SaifuFastQRState extends State<SaifuFastQR> {
                   children: [
                     Container(
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(color: Colors.white, shape: BoxShape.rectangle, borderRadius: BorderRadius.all(Radius.circular(12)), boxShadow: [
-                        BoxShadow(color: Colors.grey, offset: Offset(0.0, 1.0), blurRadius: 15.0)
-                      ]),
+                      decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.rectangle,
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          boxShadow: [BoxShadow(color: Colors.grey, offset: Offset(0.0, 1.0), blurRadius: 15.0)]),
                       child: Padding(
                         padding: const EdgeInsets.all(10.0),
                         child: QrImage(
@@ -236,10 +233,7 @@ class _SaifuFastQRState extends State<SaifuFastQR> {
     } else {
       return Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(),
-          Text('Data provided is not null or empty')
-        ],
+        children: [CircularProgressIndicator(), Text('Data provided is not null or empty')],
       );
     }
   }

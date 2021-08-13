@@ -21,15 +21,41 @@ class SharedPreferencesStorage extends StorageService {
   }
 
   @override
+  Future<List<Account>> getAccountData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String cachedAccountString = prefs.getString('ACCOUNTS');
+    var array = cachedAccountString.split('---');
+
+    List<Account> accounts = [];
+
+    for (int index = 0; index < array.length; index++) {
+      if (array[index] != '') {
+        Account account = Account.fromString(array[index]);
+        accounts.add(account);
+      }
+    }
+
+    return accounts;
+  }
+
+  @override
   Future setCurrentAccount(String account) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setString('CURRENT_ACCOUNT', account);
   }
 
   @override
-  Future<String> getCurrentAccount() async {
+  Future<Account> getCurrentAccount() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('CURRENT_ACCOUNT');
+    String currentAccountString = prefs.getString('CURRENT_ACCOUNT');
+
+    Account currentAccount;
+    if (currentAccountString.runtimeType != Null && currentAccountString != "") {
+      currentAccount = Account.fromString(currentAccountString);
+      return currentAccount;
+    }
+
+    return null;
   }
 
   @override
@@ -45,9 +71,18 @@ class SharedPreferencesStorage extends StorageService {
   }
 
   @override
-  Future<String> getFeeToken() async {
+  Future<Token> getFeeToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('FEE_TOKEN');
+    String feeTokenString = prefs.getString('FEE_TOKEN');
+
+    Token feeToken;
+    if (feeTokenString.runtimeType != Null) {
+      feeToken = Token.fromString(feeTokenString);
+    } else {
+      feeToken = Token(assetName: "Kira", ticker: 'KEX', denomination: "ukex", decimals: 6);
+    }
+
+    return feeToken;
   }
 
   @override
@@ -95,6 +130,14 @@ class SharedPreferencesStorage extends StorageService {
   Future setFeeAmount(int feeAmount) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setInt('FEE_AMOUNT', feeAmount);
+  }
+
+  @override
+  Future<int> getFeeAmount() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int feeAmount = prefs.getInt('FEE_AMOUNT');
+    if (feeAmount.runtimeType != Null) return feeAmount;
+    return 100;
   }
 
   @override
@@ -338,5 +381,80 @@ class SharedPreferencesStorage extends StorageService {
   Future<bool> getNetworkHealth() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getBool('NETWORK_HEALTH');
+  }
+
+  @override
+  Future setTransactions(String address, String _txData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString("TRANSACTION_${address}", _txData);
+  }
+
+  @override
+  Future<List<Transaction>> getTransactions(String address) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String txString = prefs.getString('TRANSACTION_${address}');
+    if (txString == null || txString == "") {
+      return [];
+    }
+
+    List<Transaction> _transactions = [];
+    List<dynamic> decodedResult = jsonDecode(txString);
+
+    for (int i = 0; i < decodedResult.length; i++) {
+      _transactions.add(Transaction.fromJson(decodedResult[i]));
+    }
+
+    return _transactions;
+  }
+
+  @override
+  Future setTokenBalance(String address, String _balanceData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString("BALANCE_${address}", _balanceData);
+  }
+
+  @override
+  Future<List<Token>> getTokenBalance(String address) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String balanceString = prefs.getString('BALANCE_${address}');
+    if (balanceString == null || balanceString == "") {
+      return [];
+    }
+
+    List<Token> tokenBalance = [];
+    List<dynamic> decodedResult = jsonDecode(balanceString);
+
+    for (int i = 0; i < decodedResult.length; i++) {
+      tokenBalance.add(Token.fromJson(decodedResult[i]));
+    }
+
+    return tokenBalance;
+  }
+
+  @override
+  Future setFaucetTokens(String _faucetTokenData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString("FAUCET_TOKENS", _faucetTokenData);
+  }
+
+  @override
+  Future<List<String>> getFaucetTokens() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String faucetBalanceString = prefs.getString('FAUCET_TOKENS');
+    if (faucetBalanceString == null || faucetBalanceString == "") {
+      return [];
+    }
+
+    List<String> tokenList = [];
+    var data = json.decode(faucetBalanceString);
+    var coins = data['balances'];
+
+    if (coins != null) {
+      for (int i = 0; i < coins.length; i++) {
+        tokenList.add(coins[i]['denom']);
+      }
+    }
+
+    return tokenList;
   }
 }

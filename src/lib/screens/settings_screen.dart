@@ -3,14 +3,11 @@ import 'dart:html' as html;
 import 'dart:convert';
 import 'package:blake_hash/blake_hash.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/service_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -19,13 +16,19 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final _accountService = getIt<AccountService>();
+  final _storageService = getIt<StorageService>();
   final _tokenService = getIt<TokenService>();
+
   String accountId, feeTokenTicker, notification = '';
-  String expireTime = '0', error = '', accountNameError = '', currentPassword = '';
-  bool isError = true, isEditEnabled = false;
+
+  String expireTime = '0', error = '', accountNameError = '', currentPassword = '', currentRpcUrl = '';
+  bool isError = true, isAccountEditEnabled = false, isNodeEditEnabled = false;
   List<Account> accounts = [];
+  List<String> nodes = [];
   List<Token> tokens = [];
   bool isNetworkHealthy = false;
+  Account currentAccount;
 
   FocusNode expireTimeFocusNode;
   TextEditingController expireTimeController;
@@ -41,82 +44,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   FocusNode passwordNode;
   TextEditingController passwordController;
-
-  final _storageService = getIt<StorageService>();
-
-  void readCachedData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      String cachedAccountString = prefs.getString('ACCOUNTS');
-      var array = cachedAccountString.split('---');
-
-      for (int index = 0; index < array.length; index++) {
-        if (array[index] != '') {
-          Account account = Account.fromString(array[index]);
-          accounts.add(account);
-        }
-      }
-
-      if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-        accountId = BlocProvider.of<AccountBloc>(context).state.currentAccount.encryptedMnemonic;
-        accountNameController.text = BlocProvider.of<AccountBloc>(context).state.currentAccount.name;
-      }
-
-      // Cached password
-      currentPassword = prefs.getString('PASSWORD');
-
-      // Password expire time
-      expireTime = (prefs.getInt('EXPIRE_TIME') / 60000).toString();
-      expireTimeController.text = expireTime;
-
-      // Fee amount
-      int feeAmount = prefs.getInt('FEE_AMOUNT');
-      if (feeAmount.runtimeType != Null)
-        feeAmountController.text = feeAmount.toString();
-      else
-        feeAmountController.text = "100";
-    });
-  }
-
-  void getTokens() async {
-    Account currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-    Token feeToken = BlocProvider.of<TokenBloc>(context).state.feeToken;
-    if (currentAccount != null && mounted) {
-      await _tokenService.getTokens(currentAccount.bech32Address);
-
-      setState(() {
-        tokens = _tokenService.tokens;
-        feeTokenTicker = feeToken != null
-            ? feeToken.ticker
-            : _tokenService.tokens.length > 0
-                ? tokens[0].ticker
-                : null;
-      });
-    }
-  }
-
-  void getInterxRPCUrl() async {
-    var apiUrl = await _storageService.getLiveRpcUrl();
-    String interxUrl = apiUrl[0];
-    interxUrl = interxUrl.replaceAll('/api', '');
-    rpcUrlController.text = interxUrl;
-  }
-
-  void getNodeStatus() async {
-    final _statusService = getIt<StatusService>();
-    bool networkHealth = _statusService.isNetworkHealthy;
-    NodeInfo nodeInfo = _statusService.nodeInfo;
-
-    if (nodeInfo == null) {
-      final _storageService = getIt<StorageService>();
-      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
-    }
-
-    setState(() {
-      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
-    });
-  }
 
   @override
   void initState() {
@@ -140,8 +67,109 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     getNodeStatus();
     getInterxRPCUrl();
+    getCurrentAccount();
     readCachedData();
     getTokens();
+  }
+
+  void readCachedData() async {
+    List<Account> cAccounts = await _storageService.getAccountData();
+
+    String cPassword = await _storageService.getPassword();
+    int cExpireTime = await _storageService.getExpireTime();
+    int cFeeAmount = await _storageService.getFeeAmount();
+
+    if (mounted) {
+      setState(() {
+        accounts = cAccounts;
+
+        // Cached password
+        currentPassword = cPassword;
+
+        // Password expire time
+        expireTime = (cExpireTime / 60000).toString();
+        expireTimeController.text = expireTime;
+
+        // Fee amount
+        feeAmountController.text = cFeeAmount.toString();
+      });
+    }
+  }
+
+  void getTokens() async {
+    Token feeToken = await _storageService.getFeeToken();
+
+    Account curAccount;
+    curAccount = _accountService.currentAccount;
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (curAccount != null) {
+      List<Token> _tokenBalance = _tokenService.tokens;
+
+      if (_tokenBalance.length == 0) {
+        _tokenBalance = await _storageService.getTokenBalance(curAccount.bech32Address);
+      }
+
+      if (_tokenBalance.length == 0) {
+        await _tokenService.getTokens(curAccount.bech32Address);
+        _tokenBalance = _tokenService.tokens;
+      }
+
+      if (mounted) {
+        setState(() {
+          tokens = _tokenBalance;
+          feeTokenTicker = feeToken != null
+              ? feeToken.ticker
+              : _tokenBalance.length > 0
+                  ? _tokenBalance[0].ticker
+                  : null;
+        });
+      }
+    }
+  }
+
+  void getInterxRPCUrl() async {
+    var apiUrl = await _storageService.getLiveRpcUrl();
+    String interxUrl = apiUrl[0];
+    interxUrl = interxUrl.replaceAll('/api', '');
+    currentRpcUrl = interxUrl;
+    nodes.add(currentRpcUrl);
+    rpcUrlController.text = interxUrl;
+  }
+
+  void getNodeStatus() async {
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+      });
+    }
+  }
+
+  getCurrentAccount() async {
+    Account curAccount = _accountService.currentAccount;
+
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (mounted) {
+      setState(() {
+        currentAccount = curAccount;
+        accountId = curAccount.encryptedMnemonic;
+        accountNameController.text = curAccount.name;
+      });
+    }
   }
 
   @override
@@ -186,7 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     html.Url.revokeObjectUrl(url);
   }
 
-  void onUpdate() {
+  void onUpdate() async {
     if (expireTimeController.text == null) return;
 
     int minutes = int.tryParse(expireTimeController.text);
@@ -221,17 +249,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       isError = false;
     });
 
-    _storageService.setExpireTime(Duration(minutes: minutes));
-    _storageService.setInterxRPCUrl(customInterxRPCUrl);
-    _storageService.setFeeAmount(feeAmount);
+    await _storageService.setExpireTime(Duration(minutes: minutes));
+    await _storageService.setInterxRPCUrl(customInterxRPCUrl);
+    await _storageService.setFeeAmount(feeAmount);
 
     Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
-    BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-    _storageService.setCurrentAccount(currentAccount.toJsonString());
+    await _accountService.setCurrentAccount(currentAccount);
 
     Token feeToken = tokens.where((e) => e.ticker == feeTokenTicker).toList()[0];
-    BlocProvider.of<TokenBloc>(context).add(SetFeeToken(feeToken));
-    _storageService.setFeeToken(feeToken.toString());
+    _tokenService.setFeeToken(feeToken);
   }
 
   @override
@@ -243,37 +269,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                    alignment: Alignment.center,
-                    margin: EdgeInsets.only(top: 50, bottom: 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 500),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            addAccounts(),
-                            addButtons(context),
-                            if (isEditEnabled) addAccountName(),
-                            if (isEditEnabled) addFinishButton(),
-                            addCustomRPC(),
-                            addRPCButtons(context),
-                            addErrorMessage(),
-                            if (tokens.length > 0) addFeeToken(),
-                            addFeeAmount(),
-                            addExpirePassword(),
-                            ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
-                            addGoBackButton(),
-                          ],
-                        )),
-                  ));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.only(top: 50, bottom: 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 500),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      addAccounts(),
+                      addAccountButtons(context),
+                      if (isAccountEditEnabled) addAccountName(),
+                      if (isAccountEditEnabled) addAccountEditFinishButton(),
+                      addNodes(),
+                      addNodeButtons(context),
+                      if (isNodeEditEnabled) addCustomRPC(),
+                      if (isNodeEditEnabled) addNodeEditFinishButton(),
+                      addErrorMessage(),
+                      if (tokens.length > 0) addFeeToken(),
+                      addFeeAmount(),
+                      addExpirePassword(),
+                      ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
+                      addGoBackButton(),
+                    ],
+                  )),
+            )));
   }
 
   Widget addHeaderTitle() {
@@ -334,9 +358,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ));
   }
 
-  Widget addButtons(BuildContext context) {
+  Widget addNodes() {
     return Container(
-        margin: EdgeInsets.only(top: 8, bottom: 30),
+        decoration: BoxDecoration(
+            border: Border.all(width: 2, color: KiraColors.kPurpleColor),
+            color: KiraColors.transparent,
+            borderRadius: BorderRadius.circular(9)),
+        // dropdown below..
+        child: DropdownButtonHideUnderline(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: EdgeInsets.only(top: 10, left: 15, bottom: 0),
+                child: Text("Nodes", style: TextStyle(color: KiraColors.kGrayColor, fontSize: 12)),
+              ),
+              ButtonTheme(
+                alignedDropdown: true,
+                child: DropdownButton<String>(
+                    dropdownColor: KiraColors.kPurpleColor,
+                    value: currentRpcUrl,
+                    icon: Icon(Icons.arrow_drop_down),
+                    iconSize: 32,
+                    underline: SizedBox(),
+                    onChanged: (String rpcUrl) {
+                      setState(() {
+                        currentRpcUrl = rpcUrl;
+                        rpcUrlController.text = rpcUrl;
+                      });
+                    },
+                    items: nodes.map<DropdownMenuItem<String>>((String rpcUrl) {
+                      return DropdownMenuItem<String>(
+                        value: rpcUrl,
+                        child: Container(
+                            height: 25,
+                            alignment: Alignment.topCenter,
+                            child: Text(rpcUrl, style: TextStyle(color: KiraColors.white, fontSize: 18))),
+                      );
+                    }).toList()),
+              ),
+            ],
+          ),
+        ));
+  }
+
+  Widget addAccountButtons(BuildContext context) {
+    return Container(
+        margin: EdgeInsets.only(top: 8, bottom: 20),
         alignment: Alignment.centerLeft,
         child:
             Row(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.center, children: [
@@ -360,11 +429,209 @@ class _SettingsScreenState extends State<SettingsScreen> {
           InkWell(
               onTap: () {
                 setState(() {
-                  isEditEnabled = true;
+                  isAccountEditEnabled = true;
                 });
               },
               child: Text(
                 Strings.edit,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: KiraColors.green3.withOpacity(0.9),
+                  fontSize: 14,
+                  decoration: TextDecoration.underline,
+                ),
+              )),
+        ]));
+  }
+
+  Widget addAccountName() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppTextField(
+        hintText: Strings.accountName,
+        labelText: Strings.accountName,
+        focusNode: accountNameNode,
+        controller: accountNameController,
+        textInputAction: TextInputAction.done,
+        maxLines: 1,
+        autocorrect: false,
+        keyboardType: TextInputType.text,
+        textAlign: TextAlign.left,
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: KiraColors.white,
+          fontFamily: 'NunitoSans',
+        ),
+      ),
+      SizedBox(height: 10),
+    ]);
+  }
+
+  Widget addAccountEditFinishButton() {
+    return Container(
+        margin: EdgeInsets.only(top: 5, bottom: 25),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            InkWell(
+                onTap: () {
+                  var accountName = accountNameController.text;
+                  if (accountName == "") {
+                    setState(() {
+                      accountNameError = Strings.accountNameInvalid;
+                    });
+                    return;
+                  }
+
+                  var index = accounts.indexWhere((item) => item.encryptedMnemonic == accountId);
+                  accounts.elementAt(index).name = accountName;
+
+                  String updatedString = "";
+
+                  for (int i = 0; i < accounts.length; i++) {
+                    updatedString += accounts[i].toJsonString();
+                    if (i < accounts.length - 1) {
+                      updatedString += "---";
+                    }
+                  }
+
+                  _storageService.removeCachedAccount();
+                  _storageService.setAccountData(updatedString);
+
+                  Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
+                  _accountService.setCurrentAccount(currentAccount);
+
+                  setState(() {
+                    isAccountEditEnabled = false;
+                  });
+                },
+                child: Text(
+                  Strings.finish,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: KiraColors.blue1.withOpacity(0.9),
+                    fontSize: 14,
+                    decoration: TextDecoration.underline,
+                  ),
+                )),
+            if (accountNameError.isNotEmpty)
+              Text(accountNameError,
+                  style: TextStyle(
+                    fontSize: 13.0,
+                    color: KiraColors.kYellowColor,
+                  ))
+          ],
+        ));
+  }
+
+  Widget addCustomRPC() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppTextField(
+        hintText: Strings.rpcURL,
+        labelText: Strings.rpcURL,
+        focusNode: rpcUrlNode,
+        controller: rpcUrlController,
+        textInputAction: TextInputAction.done,
+        maxLines: 1,
+        autocorrect: false,
+        keyboardType: TextInputType.text,
+        textAlign: TextAlign.left,
+        onChanged: (String text) {
+          setState(() {
+            var urlPattern = r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}\:[0-9]{1,5}$";
+            RegExp regex = new RegExp(urlPattern, caseSensitive: false);
+
+            if (!regex.hasMatch(text)) {
+              error = Strings.invalidUrl;
+            } else {
+              error = "";
+            }
+          });
+        },
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: KiraColors.white,
+          fontFamily: 'NunitoSans',
+        ),
+      ),
+      SizedBox(height: 10),
+    ]);
+  }
+
+  Widget addNodeEditFinishButton() {
+    return Container(
+        margin: EdgeInsets.only(top: 5, bottom: 15),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            InkWell(
+                onTap: () {
+                  setState(() {
+                    isNodeEditEnabled = false;
+                  });
+                },
+                child: Text(
+                  Strings.finish,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: KiraColors.blue1.withOpacity(0.9),
+                    fontSize: 14,
+                    decoration: TextDecoration.underline,
+                  ),
+                )),
+            if (accountNameError.isNotEmpty)
+              Text(accountNameError,
+                  style: TextStyle(
+                    fontSize: 13.0,
+                    color: KiraColors.kYellowColor,
+                  ))
+          ],
+        ));
+  }
+
+  Widget addNodeButtons(BuildContext context) {
+    return Container(
+        margin: EdgeInsets.only(top: 8, bottom: 15),
+        alignment: Alignment.centerLeft,
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.center, children: [
+          InkWell(
+              onTap: () {},
+              child: Text(
+                Strings.add,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: KiraColors.green3.withOpacity(0.9),
+                  fontSize: 14,
+                  decoration: TextDecoration.underline,
+                ),
+              )),
+          SizedBox(width: 10),
+          InkWell(
+              onTap: () {
+                setState(() {
+                  isNodeEditEnabled = true;
+                });
+              },
+              child: Text(
+                Strings.edit,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: KiraColors.green3.withOpacity(0.9),
+                  fontSize: 14,
+                  decoration: TextDecoration.underline,
+                ),
+              )),
+          SizedBox(width: 10),
+          InkWell(
+              onTap: () {},
+              child: Text(
+                Strings.remove,
                 textAlign: TextAlign.left,
                 style: TextStyle(
                   color: KiraColors.green3.withOpacity(0.9),
@@ -444,156 +711,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ));
-  }
-
-  Widget addAccountName() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppTextField(
-        hintText: Strings.accountName,
-        labelText: Strings.accountName,
-        focusNode: accountNameNode,
-        controller: accountNameController,
-        textInputAction: TextInputAction.done,
-        maxLines: 1,
-        autocorrect: false,
-        keyboardType: TextInputType.text,
-        textAlign: TextAlign.left,
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 18,
-          color: KiraColors.white,
-          fontFamily: 'NunitoSans',
-        ),
-      ),
-      SizedBox(height: 10),
-    ]);
-  }
-
-  Widget addFinishButton() {
-    return Container(
-        margin: EdgeInsets.only(top: 5, bottom: 25),
-        alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            InkWell(
-                onTap: () {
-                  var accountName = accountNameController.text;
-                  if (accountName == "") {
-                    setState(() {
-                      accountNameError = Strings.accountNameInvalid;
-                    });
-                    return;
-                  }
-
-                  var index = accounts.indexWhere((item) => item.encryptedMnemonic == accountId);
-                  accounts.elementAt(index).name = accountName;
-
-                  String updatedString = "";
-
-                  for (int i = 0; i < accounts.length; i++) {
-                    updatedString += accounts[i].toJsonString();
-                    if (i < accounts.length - 1) {
-                      updatedString += "---";
-                    }
-                  }
-
-                  _storageService.removeCachedAccount();
-                  _storageService.setAccountData(updatedString);
-
-                  Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
-                  BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-                  _storageService.setCurrentAccount(currentAccount.toJsonString());
-
-                  setState(() {
-                    isEditEnabled = false;
-                  });
-                },
-                child: Text(
-                  Strings.finish,
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    color: KiraColors.blue1.withOpacity(0.9),
-                    fontSize: 14,
-                    decoration: TextDecoration.underline,
-                  ),
-                )),
-            if (accountNameError.isNotEmpty)
-              Text(accountNameError,
-                  style: TextStyle(
-                    fontSize: 13.0,
-                    color: KiraColors.kYellowColor,
-                  ))
-          ],
-        ));
-  }
-
-  Widget addCustomRPC() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppTextField(
-        hintText: Strings.rpcURL,
-        labelText: Strings.rpcURL,
-        focusNode: rpcUrlNode,
-        controller: rpcUrlController,
-        textInputAction: TextInputAction.done,
-        maxLines: 1,
-        autocorrect: false,
-        keyboardType: TextInputType.text,
-        textAlign: TextAlign.left,
-        onChanged: (String text) {
-          setState(() {
-            var urlPattern = r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}\:[0-9]{1,5}$";
-            RegExp regex = new RegExp(urlPattern, caseSensitive: false);
-
-            if (!regex.hasMatch(text)) {
-              error = Strings.invalidUrl;
-            } else {
-              error = "";
-            }
-          });
-        },
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 18,
-          color: KiraColors.white,
-          fontFamily: 'NunitoSans',
-        ),
-      ),
-      SizedBox(height: 10),
-    ]);
-  }
-
-  Widget addRPCButtons(BuildContext context) {
-    return Container(
-        margin: EdgeInsets.only(top: 0, bottom: 10),
-        alignment: Alignment.centerLeft,
-        child:
-            Row(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.center, children: [
-          InkWell(
-              onTap: () {},
-              child: Text(
-                Strings.add,
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  color: KiraColors.green3.withOpacity(0.9),
-                  fontSize: 14,
-                  decoration: TextDecoration.underline,
-                ),
-              )),
-          SizedBox(width: 10),
-          InkWell(
-              onTap: () {},
-              child: Text(
-                Strings.edit,
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  color: KiraColors.green3.withOpacity(0.9),
-                  fontSize: 14,
-                  decoration: TextDecoration.underline,
-                ),
-              )),
-        ]));
   }
 
   Widget addFeeAmount() {

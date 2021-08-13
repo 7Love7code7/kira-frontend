@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:jdenticon/jdenticon.dart';
 
@@ -15,7 +13,6 @@ import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/helpers/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
-import 'package:kira_auth/blocs/export.dart';
 
 class WithdrawalScreen extends StatefulWidget {
   @override
@@ -25,6 +22,8 @@ class WithdrawalScreen extends StatefulWidget {
 class _WithdrawalScreenState extends State<WithdrawalScreen> {
   // final _gravatarService = getIt<GravatarService>();
   final _tokenService = getIt<TokenService>();
+  final _accountService = getIt<AccountService>();
+  final _storageService = getIt<StorageService>();
   final _transactionService = getIt<TransactionService>();
 
   List<Token> tokens = [];
@@ -75,25 +74,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     memoController = TextEditingController();
 
     getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-          currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-        }
-        if (BlocProvider.of<TokenBloc>(context).state.feeToken != null) {
-          feeToken = BlocProvider.of<TokenBloc>(context).state.feeToken;
-        }
-        getWithdrawalTransactions();
-      });
-    }
-
     getTokens();
     getCachedFeeAmount();
-
-    if (feeToken == null) {
-      getFeeToken();
-    }
+    getFeeToken();
+    getWithdrawalTransactions();
   }
 
   @override
@@ -110,20 +94,53 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     bool networkHealth = _statusService.isNetworkHealthy;
     NodeInfo nodeInfo = _statusService.nodeInfo;
 
-    setState(() {
-      isNetworkHealthy = nodeInfo == null ? false : networkHealth;
-    });
+    if (nodeInfo == null) {
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+      });
+    }
   }
 
   void getWithdrawalTransactions() async {
-    if (currentAccount != null) {
-      List<Transaction> wTxs =
-          await _transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: true);
+    Account curAccount;
+    curAccount = _accountService.currentAccount;
 
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (mounted) {
       setState(() {
-        transactions = wTxs;
-        initialFetched = true;
+        currentAccount = curAccount;
       });
+    }
+
+    if (curAccount != null) {
+      List<Transaction> _transactions = _transactionService.transactions;
+
+      if (_transactions.length == 0) {
+        _transactions = await _storageService.getTransactions(curAccount.bech32Address);
+      }
+
+      if (_transactions.length == 0) {
+        bool result = await _transactionService.getTransactions(curAccount.bech32Address);
+        if (!result)
+          setState(() {
+            initialFetched = false;
+          });
+        _transactions = _transactionService.transactions;
+      }
+
+      if (mounted) {
+        setState(() {
+          transactions = _transactions.where((element) => element.action == "Withdraw").toList();
+          initialFetched = true;
+        });
+      }
     }
   }
 
@@ -136,25 +153,17 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   void getCachedFeeAmount() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int cFeeAmount = await _storageService.getFeeAmount();
+
     setState(() {
-      int cfeeAmount = prefs.getInt('FEE_AMOUNT');
-      if (cfeeAmount.runtimeType != Null)
-        feeAmount = cfeeAmount.toString();
-      else
-        feeAmount = '100';
+      feeAmount = cFeeAmount.toString();
     });
   }
 
   void getFeeToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    Token fToken = await _storageService.getFeeToken();
     setState(() {
-      String feeTokenString = prefs.getString('FEE_TOKEN');
-      if (feeTokenString.runtimeType != Null) {
-        feeToken = Token.fromString(feeTokenString);
-      } else {
-        feeToken = Token(assetName: "Kira", ticker: 'KEX', denomination: "ukex", decimals: 6);
-      }
+      feeToken = fToken;
     });
   }
 
@@ -167,14 +176,32 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   void getTokens() async {
-    if (currentAccount != null && mounted) {
-      await _tokenService.getTokens(currentAccount.bech32Address);
+    Account curAccount;
 
-      setState(() {
-        tokens = _tokenService.tokens;
-        currentToken = tokens.length > 0 ? tokens[0] : null;
-        amountInterval = currentToken != null && currentToken.balance != 0 ? currentToken.balance / 100 : 0;
-      });
+    curAccount = _accountService.currentAccount;
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (curAccount != null) {
+      List<Token> _tokenBalance = _tokenService.tokens;
+
+      if (_tokenBalance.length == 0) {
+        _tokenBalance = await _storageService.getTokenBalance(curAccount.bech32Address);
+      }
+
+      if (_tokenBalance.length == 0) {
+        await _tokenService.getTokens(curAccount.bech32Address);
+        _tokenBalance = _tokenService.tokens;
+      }
+
+      if (mounted) {
+        setState(() {
+          tokens = _tokenBalance;
+          currentToken = _tokenBalance.length > 0 ? _tokenBalance[0] : null;
+          amountInterval = currentToken != null && currentToken.balance != 0 ? currentToken.balance / 100 : 0;
+        });
+      }
     }
   }
 
@@ -188,42 +215,38 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                    alignment: Alignment.center,
-                    margin: EdgeInsets.only(top: 50, bottom: 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1000),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            if (currentAccount != null) addGravatar(context),
-                            if (currentToken == null) addDescription(),
-                            ResponsiveWidget.isSmallScreen(context) ? addFirstLineSmall() : addFirstLineBig(),
-                            ResponsiveWidget.isSmallScreen(context) ? addSecondLineSmall() : addSecondLineBig(),
-                            ResponsiveWidget.isSmallScreen(context)
-                                ? addWithdrawalAmountSmall(context)
-                                : addWithdrawalAmountBig(context),
-                            addTableHeader(),
-                            !initialFetched
-                                ? addLoadingIndicator()
-                                : transactions.isEmpty
-                                    ? Container(
-                                        margin: EdgeInsets.only(top: 20, left: 20),
-                                        child: Text("No withdrawal transactions to show",
-                                            style: TextStyle(
-                                                color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                    : addTransactionsTable(),
-                          ],
-                        )),
-                  ));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.only(top: 50, bottom: 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1000),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      if (currentAccount != null) addGravatar(context),
+                      if (currentToken == null) addDescription(),
+                      ResponsiveWidget.isSmallScreen(context) ? addFirstLineSmall() : addFirstLineBig(),
+                      ResponsiveWidget.isSmallScreen(context) ? addSecondLineSmall() : addSecondLineBig(),
+                      ResponsiveWidget.isSmallScreen(context)
+                          ? addWithdrawalAmountSmall(context)
+                          : addWithdrawalAmountBig(context),
+                      // if (loading == true) addLoadingIndicator(),
+                      !initialFetched
+                          ? addLoadingIndicator()
+                          : transactions.isEmpty
+                              ? Container(
+                                  margin: EdgeInsets.only(top: 20, left: 20),
+                                  child: Text("No withdrawal transactions to show",
+                                      style: TextStyle(
+                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                              : addTransactionsTable(),
+                    ],
+                  )),
+            )));
   }
 
   Widget addHeaderTitle() {
@@ -504,8 +527,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   Widget addGravatar(BuildContext context) {
-    // final String gravatar = _gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
-
     final String reducedAddress =
         currentAccount.bech32Address.replaceRange(10, currentAccount.bech32Address.length - 7, '....');
 

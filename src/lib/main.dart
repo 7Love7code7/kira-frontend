@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:google_fonts/google_fonts.dart';
-import 'package:kira_auth/data/account_repository.dart';
-import 'package:kira_auth/data/token_repository.dart';
 import 'package:kira_auth/data/validator_repository.dart';
 import 'package:kira_auth/router.dart';
 import 'package:kira_auth/utils/colors.dart';
@@ -24,8 +22,6 @@ class MyApp extends StatelessWidget {
 
     return MultiBlocProvider(
         providers: [
-          BlocProvider<AccountBloc>(create: (context) => AccountBloc(IAccountRepository())),
-          BlocProvider<TokenBloc>(create: (context) => TokenBloc(ITokenRepository())),
           BlocProvider<NetworkBloc>(create: (context) => NetworkBloc()),
           BlocProvider<ValidatorBloc>(create: (context) => ValidatorBloc(IValidatorRepository())),
         ],
