@@ -27,6 +27,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
 
   @override
   void dispose() {
+    timer.cancel();
     super.dispose();
   }
 
@@ -47,13 +48,13 @@ class _GlobalScreenState extends State<GlobalScreen> {
   }
 
   void fetchData(bool isFirst) async {
-    Account currentAccount;
+    Account currentAccount = await _storageService.getCurrentAccount();
 
     if (isFirst) {
       _statusService.initialize();
       _tokenService.initialize();
-      _accountService.initialize();
       _transactionService.initialize();
+      _accountService.initialize();
 
       currentAccount = _accountService.currentAccount;
       if (currentAccount != null) {

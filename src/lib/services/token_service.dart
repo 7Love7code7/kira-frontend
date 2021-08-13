@@ -27,6 +27,7 @@ class TokenService {
   }
 
   Future<void> getTokens(String address) async {
+    print("--- GET TOKEN BALANCE ---");
     currentAddress = address;
     List<Token> tokenList = [];
 

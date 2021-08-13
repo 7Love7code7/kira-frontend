@@ -60,9 +60,11 @@ class TransactionService {
 
     List<String> apiUrl = await _storageService.getLiveRpcUrl();
 
+    print("CORS ORIGIN: ${apiUrl[1]}");
+
     try {
       var response = await http.get(apiUrl[0] + "/withdraws?account=$address&type=all&max=$max",
-          headers: {'Access-Control-Allow-Origin': apiUrl[1]}).timeout(Duration(seconds: 3));
+          headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
       Map<String, dynamic> withdrawTxs = jsonDecode(response.body);
 
@@ -89,7 +91,7 @@ class TransactionService {
 
     try {
       var response = await http.get(apiUrl[0] + "/deposits?account=$address&type=all&max=$max",
-          headers: {'Access-Control-Allow-Origin': apiUrl[1]}).timeout(Duration(seconds: 3));
+          headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
       Map<String, dynamic> depositTxs = jsonDecode(response.body);
 

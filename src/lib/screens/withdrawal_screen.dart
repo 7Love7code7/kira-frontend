@@ -104,6 +104,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   void getWithdrawalTransactions() async {
     Account curAccount;
     curAccount = _accountService.currentAccount;
+
     if (curAccount == null) {
       curAccount = await _storageService.getCurrentAccount();
     }
