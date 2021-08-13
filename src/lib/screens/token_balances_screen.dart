@@ -420,7 +420,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                       SizedBox(height: 10),
                       !isTyping && query != "" ? addHeaderTitle() : Container(),
                       isValidAddress ? addAccountAddress() : Container(),
-                      isValidAddress ? addAccountBalance() : Container(),
+                      // isValidAddress ? addAccountBalance() : Container(),
                       isValidAddress ? Wrap(children: tabItems()) : Container(),
                       isValidAddress && tabType == 0
                           ? Align(alignment: Alignment.center, child: qrCode())
@@ -647,59 +647,50 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
   Widget addAccountAddress() {
     return Container(
-      padding: EdgeInsets.all(5),
-      margin: EdgeInsets.only(right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("Address",
-              style:
-              TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                InkWell(
-                  onTap: () {
-                    copyText(currentAccount.bech32Address);
-                    showToast(Strings.publicAddressCopied);
-                  },
-                  child: // Flexible(
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(currentAccount.getReducedBechAddress,
+        padding: EdgeInsets.all(5),
+        margin: EdgeInsets.only(right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text("Address", style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            InkWell(
+                onTap: () {
+                  copyText(currentAccount.bech32Address);
+                  showToast(Strings.publicAddressCopied);
+                },
+                child: // Flexible(
+                    Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(currentAccount.getReducedBechAddress,
                         textAlign: TextAlign.end,
                         style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 5),
-                      Icon(Icons.copy, size: 20, color: KiraColors.white),
-                    ],
-                  )),
-                SizedBox(width: 15),
-                InkWell(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return CustomDialog(
-                            contentWidgets: [
-                              Text(Strings.kiraNetwork,
-                                style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
-                              ),
-                              SizedBox(height: 15),
-                              qrCode()
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    child:
-                        Icon(Icons.qr_code, size: 20, color: KiraColors.white),
-                  )
-              ]
+                    SizedBox(width: 5),
+                    Icon(Icons.copy, size: 20, color: KiraColors.white),
+                  ],
+                )),
+            SizedBox(width: 15),
+            InkWell(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return CustomDialog(
+                      contentWidgets: [
+                        Text(
+                          Strings.kiraNetwork,
+                          style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
+                        ),
+                        SizedBox(height: 15),
+                        qrCode()
+                      ],
+                    );
+                  },
+                );
+              },
+              child: Icon(Icons.qr_code, size: 20, color: KiraColors.white),
             )
-          ]
-        )
-    );
+          ])
+        ]));
   }
 
   List<Widget> tabItems() {
@@ -796,17 +787,19 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
   Widget addTableHeader() {
     List<String> titles = (!isLoggedIn && tabType < 2)
-        ? ResponsiveWidget.isSmallScreen(context) ? [
-            'Tx Hash',
-            ['Sender', 'Recipient'][tabType],
-            'Status'
-            ] : [
-            'Tx Hash',
-            ['Sender', 'Recipient'][tabType],
-            'Amount',
-            'Time',
-            'Status'
-          ]
+        ? ResponsiveWidget.isSmallScreen(context)
+            ? [
+                'Tx Hash',
+                ['Sender', 'Recipient'][tabType],
+                'Status'
+              ]
+            : [
+                'Tx Hash',
+                ['Sender', 'Recipient'][tabType],
+                'Amount',
+                'Time',
+                'Status'
+              ]
         : ['Token Name', 'Balance'];
     List<int> flexes = (!isLoggedIn && tabType < 2) ? [2, 2, 1, 1, 1] : [1, 1];
 
