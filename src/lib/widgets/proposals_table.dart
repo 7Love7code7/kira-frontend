@@ -56,16 +56,19 @@ class _ProposalsTableState extends State<ProposalsTable> {
   void initState() {
     super.initState();
 
-    setPage("");
+    setPage("", first: true);
     widget.controller.stream.listen((newQuery) => setPage(newQuery));
   }
 
-  setPage(String newQuery, {int newPage = 0}) {
-    query = newQuery;
+  setPage(String newQuery, {int newPage = 0, bool first = false}) {
+    if (newQuery != null)
+      query = newQuery;
     if (!mounted) return;
     if (newPage > 0)
       widget.setPage(newPage);
-    var page = newPage == 0 ? widget.page : newPage;
+    else if (newQuery != null && !first)
+      widget.setPage(1);
+    var page = newPage > 0 ? newPage : newQuery != null ? 1 : widget.page;
     this.setState(() {
       startAt = page * PAGE_COUNT - PAGE_COUNT;
       endAt = startAt + PAGE_COUNT;
@@ -131,7 +134,7 @@ class _ProposalsTableState extends State<ProposalsTable> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         IconButton(
-          onPressed: widget.page > 1 ? () => setPage(query, newPage: widget.page - 1) : null,
+          onPressed: widget.page > 1 ? () => setPage(null, newPage: widget.page - 1) : null,
           icon: Icon(
             Icons.arrow_back_ios,
             size: 20,
@@ -140,7 +143,7 @@ class _ProposalsTableState extends State<ProposalsTable> {
         ),
         Text("${min(widget.page, totalPages)} / $totalPages", style: TextStyle(fontSize: 16, color: KiraColors.white, fontWeight: FontWeight.bold)),
         IconButton(
-          onPressed: widget.page < totalPages ? () => setPage(query, newPage: widget.page + 1) : null,
+          onPressed: widget.page < totalPages ? () => setPage(null, newPage: widget.page + 1) : null,
           icon: Icon(
               Icons.arrow_forward_ios,
               size: 20,

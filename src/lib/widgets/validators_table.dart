@@ -44,15 +44,18 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
   void initState() {
     super.initState();
 
-    setPage("");
+    setPage("", first: true);
     widget.controller.stream.listen((newQuery) => setPage(newQuery));
   }
 
-  setPage(String newQuery, {int newPage = 0}) {
-    query = newQuery;
+  setPage(String newQuery, {int newPage = 0, bool first = false}) {
+    if (newQuery != null)
+      query = newQuery;
     if (newPage > 0)
       widget.setPage(newPage);
-    var page = newPage == 0 ? widget.page : newPage;
+    else if (newQuery != null && !first)
+      widget.setPage(1);
+    var page = newPage > 0 ? newPage : newQuery != null ? 1 : widget.page;
     this.setState(() {
       startAt = page * PAGE_COUNT - PAGE_COUNT;
       endAt = startAt + PAGE_COUNT;
@@ -116,7 +119,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         IconButton(
-          onPressed: widget.page > 1 ? () => setPage(query, newPage: widget.page - 1) : null,
+          onPressed: widget.page > 1 ? () => setPage(null, newPage: widget.page - 1) : null,
           icon: Icon(
             Icons.arrow_back_ios,
             size: 20,
@@ -125,7 +128,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
         ),
         Text("${min(widget.page, totalPages)} / $totalPages", style: TextStyle(fontSize: 16, color: KiraColors.white, fontWeight: FontWeight.bold)),
         IconButton(
-          onPressed: widget.page < totalPages ? () => setPage(query, newPage: widget.page + 1) : null,
+          onPressed: widget.page < totalPages ? () => setPage(null, newPage: widget.page + 1) : null,
           icon: Icon(
               Icons.arrow_forward_ios,
               size: 20,
@@ -267,10 +270,24 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   )
               ),
               SizedBox(width: 20),
-              Flexible(child: Text(
-                  validator.valkey,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+              Flexible(child:
+                InkWell(
+                  onTap: () {
+                    copyText(validator.valkey);
+                    showToast(Strings.validatorAddressCopied);
+                  },
+                  child: Text(
+                    validator.valkey,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+                )),
+              SizedBox(width: 10),
+              InkWell(
+                onTap: () {
+                  copyText(validator.valkey);
+                  showToast(Strings.validatorAddressCopied);
+                },
+                child: Icon(Icons.copy, size: 20, color: KiraColors.white),
               ),
             ],
           ),
@@ -286,10 +303,24 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   )
               ),
               SizedBox(width: 20),
-              Flexible(child: Text(
-                  validator.pubkey,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+              Flexible(child:
+                InkWell(
+                  onTap: () {
+                    copyText(validator.pubkey);
+                    showToast(Strings.publicAddressCopied);
+                  },
+                  child: Text(
+                    validator.pubkey,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+                )),
+              SizedBox(width: 10),
+              InkWell(
+                onTap: () {
+                  copyText(validator.pubkey);
+                  showToast(Strings.publicAddressCopied);
+                },
+                child: Icon(Icons.copy, size: 20, color: KiraColors.white),
               ),
             ],
           ),
@@ -300,6 +331,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   width: fieldWidth,
                   child: Text(
                       "Website",
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
@@ -315,12 +347,16 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   width: fieldWidth,
                   child: Text(
                       "Social",
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
               ),
               SizedBox(width: 20),
-              Text(validator.checkUnknownWith("social"), overflow: TextOverflow.ellipsis, style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14)),
+              Flexible(child: Text(validator.checkUnknownWith("social"),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
+              ),
             ],
           ),
           SizedBox(height: 10),
@@ -330,6 +366,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   width: fieldWidth,
                   child: Text(
                       "Identity",
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
@@ -345,6 +382,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   width: fieldWidth,
                   child: Text(
                       "Streak",
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
@@ -361,6 +399,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                   child: Text(
                       "Mischance",
                       textAlign: TextAlign.right,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)
                   )
               ),

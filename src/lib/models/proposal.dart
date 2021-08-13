@@ -141,6 +141,9 @@ class Voteability {
   int count;
 
   Voteability({ this.voteOptions, this.whitelistPermissions, this.blacklistPermissions, this.count = 0 });
+
+  static Voteability get empty =>
+    Voteability(voteOptions: [], whitelistPermissions: [], blacklistPermissions: []);
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)

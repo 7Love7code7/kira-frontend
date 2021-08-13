@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:intl/intl.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'dart:convert';
 import 'package:date_time_format/date_time_format.dart';
@@ -43,6 +44,7 @@ class Transaction {
 
   String toString() => jsonEncode(toJson());
 
+  String get getHash => '0x$hash';
   String get getReducedHash => hash.length > 7 ? hash.replaceRange(7, hash.length - 3, '....') : hash;
   String get getReducedSender => sender.length > 7 ? sender.replaceRange(7, sender.length - 7, '....') : sender;
   String get getReducedRecipient =>
@@ -51,6 +53,11 @@ class Transaction {
   String get getTimeString => new DateTime.fromMillisecondsSinceEpoch(this.time * 1000).toString();
   String get getTimeRelativeString =>
       new DateTime.fromMillisecondsSinceEpoch(this.time * 1000).relative(appendIfAfter: 'ago');
+
+  String getLongTimeString() {
+    var formatter = DateFormat("d MMM yyyy, h:mm:ssa 'UTC'");
+    return formatter.format(DateTime.fromMillisecondsSinceEpoch(this.time * 1000).toUtc());
+  }
 
   TransactionStatus getStatus() {
     TransactionStatus tStatus;

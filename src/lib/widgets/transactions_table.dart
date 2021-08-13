@@ -70,7 +70,6 @@ class _TransactionsTableState extends State<TransactionsTable> {
                 ),
                 child: Column(children: <Widget>[
                   addNavigateControls(),
-                  addTableHeader(),
                   ...currentTransactions
                       .map((transaction) => ExpandableNotifier(
                             child: ScrollOnExpand(
@@ -131,47 +130,6 @@ class _TransactionsTableState extends State<TransactionsTable> {
     });
   }
 
-  Widget addTableHeader() {
-    return Container(
-      padding: EdgeInsets.all(5),
-      margin: EdgeInsets.only(right: 40, bottom: 15, top: 15),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text("Tx Hash",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(widget.isDeposit ? "Sender" : "Recipient",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text("Amount",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text("Time",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text("Status",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget addRowHeader(Transaction transaction) {
     return Builder(builder: (context) {
       var controller = ExpandableController.of(context);
@@ -183,7 +141,7 @@ class _TransactionsTableState extends State<TransactionsTable> {
             refreshExpandStatus(newExpandHash: newExpandHash);
           },
           child: Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
+            padding: EdgeInsets.only(left: 20, top: 10, bottom: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -197,31 +155,35 @@ class _TransactionsTableState extends State<TransactionsTable> {
                       },
                       child: Text(transaction.getReducedHash,
                           textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16)),
                     ))),
                 Expanded(
                     flex: 2,
                     child: Align(
                         child: InkWell(
-                      onTap: () {
-                        copyText(widget.isDeposit ? transaction.sender : transaction.recipient);
-                        showToast(Strings.senderAddressCopied);
-                      },
-                      child: Text(widget.isDeposit ? transaction.getReducedSender : transaction.getReducedRecipient,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16)),
-                    ))),
-                Expanded(
+                          onTap: () {
+                            copyText(widget.isDeposit ? transaction.sender : transaction.recipient);
+                            showToast(widget.isDeposit ? Strings.senderAddressCopied : Strings.recipientAddressCopied);
+                          },
+                          child: Text(widget.isDeposit ? transaction.getReducedSender : transaction.getReducedRecipient,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16)),
+                        ))),
+                ResponsiveWidget.isSmallScreen(context) ? Container() : Expanded(
                     flex: 1,
                     child: Text(
                       transaction.getAmount,
                       textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16),
                     )),
-                Expanded(
+                ResponsiveWidget.isSmallScreen(context) ? Container() : Expanded(
                     flex: 1,
                     child: Text(transaction.getTimeRelativeString,
                         textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16))),
                 Expanded(
                     flex: 1,
@@ -257,102 +219,114 @@ class _TransactionsTableState extends State<TransactionsTable> {
   }
 
   Widget addRowBody(Transaction transaction) {
-    final fieldWidth = ResponsiveWidget.isSmallScreen(context) ? 100.0 : 150.0;
+    final fieldWidth = ResponsiveWidget.isSmallScreen(context) ? 80.0 : 150.0;
 
     return Container(
         padding: EdgeInsets.symmetric(vertical: 20, horizontal: 50),
         child: Column(children: [
-          Row(
-            children: [
-              Container(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
                   width: fieldWidth,
-                  child: Text("Tx Hash : ",
-                      textAlign: TextAlign.left,
+                  child: Text("Tx Hash",
+                      textAlign: TextAlign.right,
                       style: TextStyle(
                           color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
-              SizedBox(width: 10),
-              Flexible(
-                  child: Text(transaction.hash,
-                      overflow: TextOverflow.fade,
-                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
+                SizedBox(width: 20),
+                Flexible(
+                  child: InkWell(
+                      onTap: () {
+                        copyText(transaction.hash);
+                        showToast(Strings.txHashCopied);
+                      },
+                    child: Text(transaction.hash,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14)))
+                ),
             ],
           ),
           SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
                   width: fieldWidth,
-                  child: Text(widget.isDeposit ? "Sender : " : "Recipient :",
-                      textAlign: TextAlign.left,
+                  child: Text(widget.isDeposit ? "Sender" : "Recipient",
+                      textAlign: TextAlign.right,
                       style: TextStyle(
-                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
-              SizedBox(height: 10),
-              Flexible(
+                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(width: 20),
+                Flexible(child: InkWell(
+                  onTap: () {
+                    copyText(widget.isDeposit ? transaction.sender : transaction.recipient);
+                    showToast(widget.isDeposit ? Strings.senderAddressCopied : Strings.recipientAddressCopied);
+                  },
                   child: Text(widget.isDeposit ? transaction.sender : transaction.recipient,
+                      textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
+                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16)),
+                )),
+                SizedBox(width: 10),
+                InkWell(
+                  onTap: () {
+                    copyText(widget.isDeposit ? transaction.sender : transaction.recipient);
+                    showToast(widget.isDeposit ? Strings.senderAddressCopied : Strings.recipientAddressCopied);
+                  },
+                  child: Icon(Icons.copy, size: 20, color: KiraColors.white),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
                   width: fieldWidth,
-                  child: Text("Amount :",
-                      textAlign: TextAlign.left,
+                  child: Text("Amount",
+                      textAlign: TextAlign.right,
                       style: TextStyle(
-                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
-              SizedBox(height: 10),
-              Flexible(
-                  child: Text(transaction.getAmount,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
+                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(width: 20),
+                Flexible(child: Text(transaction.getAmount,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16),
+                ))
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
                   width: fieldWidth,
-                  child: Text("Time :",
-                      textAlign: TextAlign.left,
+                  child: Text("Time",
+                      textAlign: TextAlign.right,
                       style: TextStyle(
-                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
-              SizedBox(height: 10),
-              Flexible(
-                  child: Text(transaction.getTimeString,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
+                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(width: 20),
+                Flexible(child: Text(transaction.getLongTimeString(),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14),
+                ))
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
                   width: fieldWidth,
-                  child: Text("Memo :",
-                      textAlign: TextAlign.left,
+                  child: Text("Status",
+                      textAlign: TextAlign.right,
                       style: TextStyle(
-                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
-              SizedBox(width: 10),
-              Flexible(
-                  child: Text(transaction.memo,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                  width: fieldWidth,
-                  child: Text("Status :",
-                      textAlign: TextAlign.left,
-                      style: TextStyle(
-                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold))),
-              SizedBox(height: 10),
-              Flexible(
+                          color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(width: 20),
+                Container(
                   child: Container(
                       decoration: new BoxDecoration(
                         shape: BoxShape.circle,
@@ -366,9 +340,10 @@ class _TransactionsTableState extends State<TransactionsTable> {
                           padding: EdgeInsets.all(2.0),
                           child: Icon(Icons.circle, size: 12.0, color: transaction.getStatusColor()),
                         ),
-                      ))),
-            ],
-          ),
-        ]));
+                      )))
+              ],
+            ),
+          ],
+        ));
   }
 }

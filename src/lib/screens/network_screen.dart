@@ -234,7 +234,36 @@ class _NetworkScreenState extends State<NetworkScreen> {
   }
 
   Widget addHeaderTitle() {
-    return Row(
+    return ResponsiveWidget.isSmallScreen(context) ? Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+            margin: EdgeInsets.only(bottom: 10),
+            child: Text(
+              Strings.validators,
+              textAlign: TextAlign.left,
+              style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+            )),
+        SizedBox(height: 10),
+        Padding(padding: EdgeInsets.only(left: 30),
+          child: Row(children: <Widget>[
+            InkWell(
+                onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                child: Icon(Icons.swap_horiz, color: KiraColors.white.withOpacity(0.8))),
+            SizedBox(width: 10),
+            InkWell(
+              onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+              child: Container(
+                  child: Text(
+                    Strings.blocks,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                  )),
+            )],
+          )),
+        SizedBox(height:30)
+      ],
+    ) : Row(
       children: <Widget>[
         Container(
             margin: EdgeInsets.only(bottom: 50),
@@ -276,7 +305,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
           this.setState(() {
             query = newText.toLowerCase();
             expandedTop = -1;
-            page = 1;
             validatorController.add(query);
           });
         },
@@ -299,7 +327,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
       child: Row(
         children: [
           Expanded(
-              flex: 2,
+              flex: ResponsiveWidget.isSmallScreen(context) ? 3 : 2,
               child: InkWell(
                   onTap: () => this.setState(() {
                         if (sortIndex == 3)
@@ -469,6 +497,6 @@ class _NetworkScreenState extends State<NetworkScreen> {
           ? a.isFavorite.toString().compareTo(b.isFavorite.toString())
           : b.isFavorite.toString().compareTo(a.isFavorite.toString()));
     }
-    validatorController.add(query);
+    validatorController.add(null);
   }
 }

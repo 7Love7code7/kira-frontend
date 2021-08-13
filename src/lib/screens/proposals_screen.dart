@@ -219,7 +219,6 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
           this.setState(() {
             query = newText.toLowerCase();
             expandedId = "";
-            page = 1;
             proposalController.add(query);
           });
         },

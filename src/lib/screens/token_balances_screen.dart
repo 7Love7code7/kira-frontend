@@ -647,39 +647,59 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
   Widget addAccountAddress() {
     return Container(
-        padding: EdgeInsets.all(5),
-        margin: EdgeInsets.only(right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text("Address", style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          InkWell(
-              onTap: () {
-                copyText(currentAccount.bech32Address);
-                showToast(Strings.publicAddressCopied);
-              },
-              child: // Flexible(
+      padding: EdgeInsets.all(5),
+      margin: EdgeInsets.only(right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Address",
+              style:
+              TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                InkWell(
+                  onTap: () {
+                    copyText(currentAccount.bech32Address);
+                    showToast(Strings.publicAddressCopied);
+                  },
+                  child: // Flexible(
                   Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(currentAccount.getReducedBechAddress,
-                      textAlign: TextAlign.end,
-                      style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-                  SizedBox(width: 5),
-                  Icon(Icons.copy, size: 20, color: KiraColors.white),
-                ],
-              ))
-        ]));
-  }
-
-  Widget addAccountBalance() {
-    return Container(
-        padding: EdgeInsets.all(5),
-        margin: EdgeInsets.only(right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text("Balance (KEX)",
-              style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          Text(this.kexBalance.toString(),
-              style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-        ]));
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(currentAccount.getReducedBechAddress,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                      SizedBox(width: 5),
+                      Icon(Icons.copy, size: 20, color: KiraColors.white),
+                    ],
+                  )),
+                SizedBox(width: 15),
+                InkWell(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return CustomDialog(
+                            contentWidgets: [
+                              Text(Strings.kiraNetwork,
+                                style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
+                              ),
+                              SizedBox(height: 15),
+                              qrCode()
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    child:
+                        Icon(Icons.qr_code, size: 20, color: KiraColors.white),
+                  )
+              ]
+            )
+          ]
+        )
+    );
   }
 
   List<Widget> tabItems() {
@@ -776,7 +796,11 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
   Widget addTableHeader() {
     List<String> titles = (!isLoggedIn && tabType < 2)
-        ? [
+        ? ResponsiveWidget.isSmallScreen(context) ? [
+            'Tx Hash',
+            ['Sender', 'Recipient'][tabType],
+            'Status'
+            ] : [
             'Tx Hash',
             ['Sender', 'Recipient'][tabType],
             'Amount',
@@ -866,8 +890,13 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
       withdrawTrx.sort((a, b) => isAscending ? a.recipient.compareTo(b.recipient) : b.sender.compareTo(a.recipient));
       tokens.sort((a, b) => isAscending ? a.balance.compareTo(b.balance) : b.balance.compareTo(a.balance));
     } else if (sortIndex == 2) {
-      depositTrx.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
-      withdrawTrx.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+      if (ResponsiveWidget.isSmallScreen(context)) {
+        depositTrx.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+        withdrawTrx.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+      } else {
+        depositTrx.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+        withdrawTrx.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+      }
     } else if (sortIndex == 3) {
       depositTrx.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
       withdrawTrx.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));

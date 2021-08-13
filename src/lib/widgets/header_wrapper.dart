@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-// import 'package:dynamic_theme/dynamic_theme.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/utils/export.dart';

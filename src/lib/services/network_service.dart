@@ -106,13 +106,18 @@ class NetworkService {
 
       for (int i = 0; i < blocks.length; i++) {
         Block block = Block.fromJson(blocks[i]);
-        block.validator = await searchValidator(block.proposerAddress);
         blockList.add(block);
         _storageService.storeModels(ModelType.BLOCK, block.height.toString(), block.jsonString);
       }
     }
 
-    this.blocks.addAll(blockList);
+    var validators = blockList.map((block) => searchValidator(block.proposerAddress));
+    var responses = await Future.wait(validators);
+    responses.asMap().forEach((index, response) {
+      blockList[index].validator = response;
+    });
+
+    this.blocks.addAll(blockList.where((element) => element.validator != null));
     this.blocks.sort((a, b) => b.height.compareTo(a.height));
   }
 
