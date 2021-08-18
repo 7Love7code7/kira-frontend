@@ -182,10 +182,10 @@ class _SaifuFastQRState extends State<SaifuFastQR> {
                     Container(
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.rectangle,
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                          boxShadow: [BoxShadow(color: Colors.grey, offset: Offset(0.0, 1.0), blurRadius: 15.0)]),
+                        color: Colors.white,
+                        shape: BoxShape.rectangle,
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(10.0),
                         child: QrImage(

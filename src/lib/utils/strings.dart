@@ -54,10 +54,13 @@ class Strings {
   // Signature Dialog
   static const String seeMore = 'See More:';
   static const String txConfirmation = 'Transaction Confirmation';
-  static const String saifuScan = "SAIFU -- Scan the QRCode";
+  static const String saifuTitle =
+      "Transaction request QR code has been generated. Please connect and scan the QR code with your SAIFU mobile app";
+        static const String saifuShowQRTitle ="Scan the QR code provided by SAIFU to release your transaction to the blockchain";
   static const String saifuScanQRText =
-      "SAIFU -- Sign the QR-Code \n \n The website will now scan the QR-Code using Webcam";
-  static const String saifuShowQR = "Show QRCode to confirm signature and broadcast the transaction";
+      "If the QR Code has been altered, please restart this process";
+
+
 
   static const String mnemonicWords = "Mnemonic Words";
   static const String withdrawalAmount = "Amount";
@@ -83,7 +86,8 @@ class Strings {
 
   static const String failedToConnect = "Failed to connect";
   static const String selectFullNode = "Input or select address of the full-node you trust";
-  static const String requireSSL = "Please specify `https://` if your address requires SSL certificate";
+  static const String requireSSL =
+      "Please specify `https://` if your address requires SSL certificate";
   static const String selectLoginOption = "Select log-in option to access your account";
   static const String searchValidatorQuery = "Search validators by address or moniker";
   static const String searchBlockTxQuery = "Search blocks or transactions by hash or height";
