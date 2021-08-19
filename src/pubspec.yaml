@@ -94,6 +94,8 @@ flutter:
   assets:
     - assets/images/
     - assets/config.json
+    - assets/images/app_store.png
+    - assets/images/google_store.png
   #   - images/a_dot_ham.jpeg
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
