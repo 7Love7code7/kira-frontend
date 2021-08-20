@@ -18,7 +18,7 @@ class AccountService {
     accounts = await _storageService.getAccountData();
   }
 
-  void setCurrentAccount(Account account) async {
+  Future<void> setCurrentAccount(Account account) async {
     currentAccount = account;
     await _storageService.setCurrentAccount(account != null ? account.toJsonString() : "");
   }

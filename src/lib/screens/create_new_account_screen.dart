@@ -680,7 +680,6 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
         mnemonic = decryptAESCryptoJS(account.encryptedMnemonic, account.secretKey);
         wordList = mnemonic.split(' ');
       });
-      ;
     }
   }
 }
