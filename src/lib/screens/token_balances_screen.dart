@@ -170,6 +170,9 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           networkId = nodeInfo.network;
           isNetworkHealthy = networkHealth;
           customInterxRPCUrl = "";
+
+          checkAddress();
+          getTokens();
         } else {
           isNetworkHealthy = false;
         }
@@ -212,19 +215,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           privateKey: "",
           publicKey: "");
 
-      getTransactions(currentAccount);
-
-      setState(() {
-        if (depositTrx.isEmpty) {
-          isValidAddress = false;
-        } else {
-          isValidAddress = true;
-          isFiltering = false;
-          _storageService.setLastSearchedAccount(this.query);
-          this.isSearchFinished = true;
-          return;
-        }
-      });
+      await getTransactions(currentAccount);
     } catch (e) {
       setState(() {
         isValidAddress = false;
@@ -336,7 +327,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     return Uint8List.fromList(result);
   }
 
-  void getTransactions(Account curAccount) async {
+  Future<void> getTransactions(Account curAccount) async {
     if (curAccount != null) {
       List<Transaction> _dTransactions = await _transactionService.fetchTransactions(curAccount.bech32Address, false);
       List<Transaction> _wTransactions = await _transactionService.fetchTransactions(curAccount.bech32Address, true);
@@ -345,6 +336,15 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         setState(() {
           depositTrx = _dTransactions;
           withdrawTrx = _wTransactions;
+
+          if (depositTrx.isEmpty) {
+            isValidAddress = false;
+          } else {
+            isValidAddress = true;
+            isFiltering = false;
+            _storageService.setLastSearchedAccount(this.query);
+            this.isSearchFinished = true;
+          }
         });
       }
     }
@@ -391,10 +391,8 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
       });
     }
 
-    getNodeStatus();
     getInterxURL();
-    getTokens();
-    checkAddress();
+    Future.delayed(const Duration(seconds: 1), getNodeStatus);
     searchController = TextEditingController();
   }
 
@@ -420,7 +418,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                   children: <Widget>[
                     addHeader(),
                     !isLoggedIn ? addSearchInput() : Container(),
-                    !isTyping && query != "" ? addHeaderTitle() : Container(),
+                    !isTyping && query != "" && (isSearchFinished && !isValidAddress) ? addHeaderTitle() : Container(),
                     isValidAddress ? addAccountAddress() : Container(),
                     isValidAddress ? Wrap(children: tabItems()) : Container(),
                     (isLoggedIn || isValidAddress) ? addTableHeader() : Container(),
@@ -550,14 +548,8 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
   Widget addHeaderTitle() {
     return Container(
-        margin: EdgeInsets.only(bottom: 10),
-        child: Text(
-          isSearchFinished
-              ? isValidAddress
-                  ? ""
-                  : Strings.searchFailed
-              : "",
-          textAlign: TextAlign.left,
+        margin: EdgeInsets.only(top: 30),
+        child: Text(Strings.searchFailed,
           style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
         ));
   }
@@ -685,7 +677,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   Widget addAccountAddress() {
     return Container(
       padding: EdgeInsets.all(5),
-      margin: EdgeInsets.only(left: 15, right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
+      margin: EdgeInsets.only(top: isFiltering ? 20 : 0, left: 15, right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
