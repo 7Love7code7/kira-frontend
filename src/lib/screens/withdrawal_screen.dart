@@ -216,37 +216,37 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
     return Scaffold(
         body: HeaderWrapper(
-            isNetworkHealthy: isNetworkHealthy,
-            childWidget: Container(
-              alignment: Alignment.center,
-              margin: EdgeInsets.only(top: 50, bottom: 50),
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 1000),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      addHeaderTitle(),
-                      if (currentAccount != null) addGravatar(context),
-                      if (currentToken == null) addDescription(),
-                      ResponsiveWidget.isSmallScreen(context) ? addFirstLineSmall() : addFirstLineBig(),
-                      ResponsiveWidget.isSmallScreen(context) ? addSecondLineSmall() : addSecondLineBig(),
-                      ResponsiveWidget.isSmallScreen(context)
-                          ? addWithdrawalAmountSmall(context)
-                          : addWithdrawalAmountBig(context),
-                      // if (loading == true) addLoadingIndicator(),
-                      !initialFetched
-                          ? addLoadingIndicator()
-                          : transactions.isEmpty
-                              ? Container(
-                                  margin: EdgeInsets.only(top: 20, left: 20),
-                                  child: Text("No withdrawal transactions to show",
-                                      style: TextStyle(
-                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                              : addTransactionsTable(),
-                    ],
-                  )),
-            )));
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+            alignment: Alignment.center,
+            margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1000),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    addHeaderTitle(),
+                    if (currentAccount != null) addGravatar(context),
+                    if (currentToken == null) addDescription(),
+                    ResponsiveWidget.isSmallScreen(context) ? addFirstLineSmall() : addFirstLineBig(),
+                    ResponsiveWidget.isSmallScreen(context) ? addSecondLineSmall() : addSecondLineBig(),
+                    ResponsiveWidget.isSmallScreen(context)
+                        ? addWithdrawalAmountSmall(context)
+                        : addWithdrawalAmountBig(context),
+                    addTableHeader(),
+                    !initialFetched
+                        ? addLoadingIndicator()
+                        : transactions.isEmpty
+                            ? Container(
+                                margin: EdgeInsets.only(top: 20, left: 20),
+                                child: Text("No withdrawal transactions to show",
+                                    style: TextStyle(
+                                        color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                            : addTransactionsTable(),
+                  ],
+                )),
+          )));
   }
 
   Widget addHeaderTitle() {

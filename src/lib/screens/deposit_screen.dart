@@ -144,31 +144,32 @@ class _DepositScreenState extends State<DepositScreen> {
 
     return Scaffold(
         body: HeaderWrapper(
-            isNetworkHealthy: isNetworkHealthy,
-            childWidget: Container(
-                alignment: Alignment.center,
-                margin: EdgeInsets.only(top: 50, bottom: 50),
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 1000),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      addHeaderTitle(),
-                      if (currentAccount != null) addGravatar(context),
-                      ResponsiveWidget.isSmallScreen(context) ? addInformationSmall() : addInformationBig(),
-                      !initialFetched
-                          ? addLoadingIndicator()
-                          : transactions.isEmpty
-                              ? Container(
-                                  margin: EdgeInsets.only(top: 20, left: 20),
-                                  child: Text("No deposit transactions to show",
-                                      style: TextStyle(
-                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                              : addTransactionsTable(),
-                    ],
-                  ),
-                ))));
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1000),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    addHeaderTitle(),
+                    if (currentAccount != null) addGravatar(context),
+                    ResponsiveWidget.isSmallScreen(context) ? addInformationSmall() : addInformationBig(),
+                    addTableHeader(),
+                    !initialFetched
+                        ? addLoadingIndicator()
+                        : transactions.isEmpty
+                            ? Container(
+                                margin: EdgeInsets.only(top: 20, left: 20),
+                                child: Text("No deposit transactions to show",
+                                    style: TextStyle(
+                                        color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                            : addTransactionsTable(),
+                  ],
+                ),
+              ))));
   }
 
   Widget addLoadingIndicator() {

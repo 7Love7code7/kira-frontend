@@ -390,13 +390,13 @@ class SharedPreferencesStorage extends StorageService {
   @override
   Future setTransactions(String address, String _txData) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString("TRANSACTION_${address}", _txData);
+    prefs.setString("TRANSACTION_$address", _txData);
   }
 
   @override
   Future<List<Transaction>> getTransactions(String address) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String txString = prefs.getString('TRANSACTION_${address}');
+    String txString = prefs.getString('TRANSACTION_$address');
     if (txString == null || txString == "") {
       return [];
     }
@@ -414,13 +414,13 @@ class SharedPreferencesStorage extends StorageService {
   @override
   Future setTokenBalance(String address, String _balanceData) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString("BALANCE_${address}", _balanceData);
+    prefs.setString("BALANCE_$address", _balanceData);
   }
 
   @override
   Future<List<Token>> getTokenBalance(String address) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String balanceString = prefs.getString('BALANCE_${address}');
+    String balanceString = prefs.getString('BALANCE_$address');
     if (balanceString == null || balanceString == "") {
       return [];
     }

@@ -65,33 +65,33 @@ class _TransactionScreenState extends State<TransactionScreen> {
     });
 
     return Scaffold(
-        body: HeaderWrapper(
-            isNetworkHealthy: isNetworkHealthy,
-            childWidget: Container(
-                alignment: Alignment.center,
-                margin: EdgeInsets.only(top: 50, bottom: 50),
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 1200),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Container(
-                          margin: EdgeInsets.only(bottom: 40),
-                          child: Text(
-                            Strings.txDetails,
-                            textAlign: TextAlign.left,
-                            style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
-                          )),
-                      transaction != null
-                          ? addTransactionDetails()
-                          : Center(
-                              child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            )),
-                    ],
-                  ),
-                ))));
+      body: HeaderWrapper(
+        isNetworkHealthy: isNetworkHealthy,
+        childWidget: Container(
+            alignment: Alignment.center,
+            margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Container(
+                      margin: EdgeInsets.only(bottom: 40),
+                      child: Text(
+                        Strings.txDetails,
+                        textAlign: TextAlign.left,
+                        style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+                      )),
+                  transaction != null
+                      ? addTransactionDetails()
+                      : Center(
+                          child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        )),
+                ],
+              ),
+            ))));
   }
 
   Widget addTransactionDetails() {

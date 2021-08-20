@@ -194,11 +194,11 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                         child: Align(
                             child: InkWell(
                               onTap: () {
-                                copyText(validator.moniker);
+                                copyText(validator.moniker.isEmpty ? validator.address : validator.moniker);
                                 showToast(Strings.validatorMonikerCopied);
                               },
                               child: Text(
-                                  validator.moniker,
+                                  validator.moniker.isEmpty ? validator.address : validator.moniker,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(color: KiraColors.white
                                       .withOpacity(0.8), fontSize: 16)

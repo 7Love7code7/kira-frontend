@@ -174,7 +174,7 @@ class _TransactionsTableState extends State<TransactionsTable> {
                 ResponsiveWidget.isSmallScreen(context) ? Container() : Expanded(
                     flex: 1,
                     child: Text(
-                      transaction.getAmount,
+                      transaction.getAmount(),
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16),
@@ -244,6 +244,14 @@ class _TransactionsTableState extends State<TransactionsTable> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14)))
                 ),
+                SizedBox(width: 10),
+                InkWell(
+                  onTap: () {
+                    copyText(widget.isDeposit ? transaction.sender : transaction.recipient);
+                    showToast(widget.isDeposit ? Strings.senderAddressCopied : Strings.recipientAddressCopied);
+                  },
+                  child: Icon(Icons.copy, size: 20, color: KiraColors.white),
+                ),
             ],
           ),
           SizedBox(height: 10),
@@ -290,7 +298,7 @@ class _TransactionsTableState extends State<TransactionsTable> {
                           color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(width: 20),
-                Flexible(child: Text(transaction.getAmount,
+                Flexible(child: Text(transaction.getAmount(),
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16),
                 ))
@@ -340,7 +348,26 @@ class _TransactionsTableState extends State<TransactionsTable> {
                           padding: EdgeInsets.all(2.0),
                           child: Icon(Icons.circle, size: 12.0, color: transaction.getStatusColor()),
                         ),
-                      )))
+                      ))),
+                transaction.memo.isEmpty ? Container() : SizedBox(height: 10),
+                transaction.memo.isEmpty ? Container() : Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: fieldWidth,
+                      child: Text("Memo",
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                              color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(width: 20),
+                    Flexible(child: Text(transaction.memo,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                      style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14),
+                    ))
+                  ],
+                ),
               ],
             ),
           ],

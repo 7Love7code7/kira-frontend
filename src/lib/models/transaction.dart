@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:intl/intl.dart';
@@ -49,10 +50,23 @@ class Transaction {
   String get getReducedSender => sender.length > 7 ? sender.replaceRange(7, sender.length - 7, '....') : sender;
   String get getReducedRecipient =>
       recipient.length > 7 ? recipient.replaceRange(7, recipient.length - 7, '....') : recipient;
-  String get getAmount => this.amount + ' ' + this.token;
   String get getTimeString => new DateTime.fromMillisecondsSinceEpoch(this.time * 1000).toString();
   String get getTimeRelativeString =>
       new DateTime.fromMillisecondsSinceEpoch(this.time * 1000).relative(appendIfAfter: 'ago');
+
+  String getAmount() {
+    switch (this.token) {
+      case 'ukex':
+        return (double.parse(this.amount) / pow(10, 6)).toString() + ' ' +
+            'KEX';
+      case 'mkex':
+        return (double.parse(this.amount) / pow(10, 9)).toString() + ' ' +
+            'KEX';
+        break;
+      default:
+        return this.amount + ' ' + this.token;
+    }
+  }
 
   String getLongTimeString() {
     var formatter = DateFormat("d MMM yyyy, h:mm:ssa 'UTC'");

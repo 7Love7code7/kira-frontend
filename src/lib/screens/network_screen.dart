@@ -24,6 +24,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
   String query = "";
   bool moreLoading = false;
   Account currentAccount;
+  bool isFiltering = false;
 
   List<String> favoriteValidators = [];
   int expandedTop = -1;
@@ -173,30 +174,31 @@ class _NetworkScreenState extends State<NetworkScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         body: HeaderWrapper(
-            isNetworkHealthy: isNetworkHealthy,
-            childWidget: Container(
-                alignment: Alignment.center,
-                margin: EdgeInsets.only(top: 50, bottom: 50),
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 1200),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      addHeader(),
-                      addTableHeader(),
-                      moreLoading
-                          ? addLoadingIndicator()
-                          : validators.isEmpty
-                              ? Container(
-                                  margin: EdgeInsets.only(top: 20, left: 20),
-                                  child: Text("No validators to show",
-                                      style: TextStyle(
-                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                              : addValidatorsTable(),
-                    ],
-                  ),
-                ))));
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1200),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    addHeaderTitle(),
+                    isFiltering ? addSearchInput() : Container(),
+                    addTableHeader(),
+                    moreLoading
+                        ? addLoadingIndicator()
+                        : validators.isEmpty
+                            ? Container(
+                                margin: EdgeInsets.only(top: 20, left: 20),
+                                child: Text("No validators to show",
+                                    style: TextStyle(
+                                        color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                            : addValidatorsTable(),
+                  ],
+                ),
+              ))));
   }
 
   Widget addLoadingIndicator() {
@@ -213,80 +215,103 @@ class _NetworkScreenState extends State<NetworkScreen> {
         ));
   }
 
-  Widget addHeader() {
-    return Container(
-      margin: EdgeInsets.only(bottom: 40),
-      child: ResponsiveWidget.isLargeScreen(context)
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                addHeaderTitle(),
-                addSearchInput(),
-              ],
-            )
-          : Column(
-              children: <Widget>[
-                addHeaderTitle(),
-                addSearchInput(),
-              ],
-            ),
-    );
-  }
-
   Widget addHeaderTitle() {
-    return ResponsiveWidget.isSmallScreen(context) ? Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Container(
-            margin: EdgeInsets.only(bottom: 10),
-            child: Text(
-              Strings.validators,
-              textAlign: TextAlign.left,
-              style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
-            )),
-        SizedBox(height: 10),
-        Padding(padding: EdgeInsets.only(left: 30),
-          child: Row(children: <Widget>[
-            InkWell(
-                onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
-                child: Icon(Icons.swap_horiz, color: KiraColors.white.withOpacity(0.8))),
-            SizedBox(width: 10),
-            InkWell(
-              onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
-              child: Container(
+    return Container(
+        child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          ResponsiveWidget.isSmallScreen(context) ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                  margin: EdgeInsets.only(bottom: 10),
                   child: Text(
-                    Strings.blocks,
+                    Strings.validators,
                     textAlign: TextAlign.left,
-                    style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                    style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
                   )),
-            )],
-          )),
-        SizedBox(height:30)
-      ],
-    ) : Row(
-      children: <Widget>[
-        Container(
-            margin: EdgeInsets.only(bottom: 50),
-            child: Text(
-              Strings.validators,
-              textAlign: TextAlign.left,
-              style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
-            )),
-        SizedBox(width: 30),
-        InkWell(
-            onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
-            child: Icon(Icons.swap_horiz, color: KiraColors.white.withOpacity(0.8))),
-        SizedBox(width: 10),
-        InkWell(
-          onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
-          child: Container(
-              child: Text(
-            Strings.blocks,
-            textAlign: TextAlign.left,
-            style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
-          )),
-        ),
-      ],
+              SizedBox(height: 10),
+              Padding(padding: EdgeInsets.only(left: 30),
+                child: Row(children: <Widget>[
+                  InkWell(
+                      onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                      child: Icon(Icons.swap_horiz, color: KiraColors.white.withOpacity(0.8))),
+                  SizedBox(width: 10),
+                  InkWell(
+                    onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                    child: Container(
+                        child: Text(
+                          Strings.blocks,
+                          textAlign: TextAlign.left,
+                          style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                        )),
+                  )],
+                )),
+              SizedBox(height:30)
+            ],
+          ) : Row(
+            children: <Widget>[
+              Container(
+                  margin: EdgeInsets.only(bottom: 50),
+                  child: Text(
+                    Strings.validators,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+                  )),
+              SizedBox(width: 30),
+              InkWell(
+                  onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                  child: Icon(Icons.swap_horiz, color: KiraColors.white.withOpacity(0.8))),
+              SizedBox(width: 10),
+              InkWell(
+                onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                child: Container(
+                    child: Text(
+                  Strings.blocks,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                )),
+              ),
+            ],
+          ),
+          Container(
+            margin: EdgeInsets.only(right: 20),
+            child: isFiltering
+                ? InkWell(
+                onTap: () {
+                  this.setState(() {
+                    isFiltering = false;
+                    expandedTop = -1;
+                  });
+                },
+                child: Icon(Icons.close, color: KiraColors.white, size: 30))
+                : Tooltip(
+              message: Strings.validatorQuery,
+              waitDuration: Duration(milliseconds: 500),
+              decoration: BoxDecoration(color: KiraColors.purple1, borderRadius: BorderRadius.circular(4)),
+              verticalOffset: 20,
+              preferBelow: ResponsiveWidget.isSmallScreen(context),
+              margin: EdgeInsets.only(
+                  right: ResponsiveWidget.isSmallScreen(context)
+                      ? 20
+                      : ResponsiveWidget.isMediumScreen(context)
+                      ? 50
+                      : 110),
+              textStyle: TextStyle(color: KiraColors.white.withOpacity(0.8)),
+              child: InkWell(
+                onTap: () {
+                  this.setState(() {
+                    isFiltering = true;
+                    expandedTop = -1;
+                  });
+                },
+                child: Icon(Icons.search, color: KiraColors.white, size: 30),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -323,7 +348,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
   Widget addTableHeader() {
     return Container(
       padding: EdgeInsets.all(5),
-      margin: EdgeInsets.only(right: 40, bottom: 20),
+      margin: EdgeInsets.only(top: 20, right: 40, bottom: 10),
       child: Row(
         children: [
           Expanded(
