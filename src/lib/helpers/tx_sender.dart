@@ -23,7 +23,7 @@ class TransactionSender {
     final requestBodyJson = jsonEncode(requestBody);
 
     // Get the response
-    final response = await http.post(apiUrl[0] + '/cosmos/txs',
+    final response = await http.post(apiUrl[0] + '/api/cosmos/txs',
         headers: {'Access-Control-Allow-Origin': apiUrl[1]}, body: requestBodyJson);
 
     if (response.statusCode != 200) {
@@ -54,7 +54,7 @@ class TransactionSender {
     final requestBodyJson = jsonEncode(requestBody);
 
     // Get the response
-    final response = await http.post(apiUrl[0] + '/cosmos/txs',
+    final response = await http.post(apiUrl[0] + '/api/cosmos/txs',
         headers: {'Access-Control-Allow-Origin': apiUrl[1]}, body: requestBodyJson);
 
     if (response.statusCode != 200) {

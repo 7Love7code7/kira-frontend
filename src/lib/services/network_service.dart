@@ -26,7 +26,7 @@ class NetworkService {
 
     var apiUrl = await _storageService.getLiveRpcUrl();
 
-    var data = await http.get(apiUrl[0] + "/valopers?offset=$lastOffset&count_total=true",
+    var data = await http.get(apiUrl[0] + "/api/valopers?offset=$lastOffset&count_total=true",
         headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
@@ -42,8 +42,8 @@ class NetworkService {
   Future<Validator> searchValidator(String proposer) async {
     final _storageService = getIt<StorageService>();
     var apiUrl = await _storageService.getLiveRpcUrl();
-    var data =
-        await http.get(apiUrl[0] + "/valopers?proposer=$proposer", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var data = await http
+        .get(apiUrl[0] + "/api/valopers?proposer=$proposer", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     if (!bodyData.containsKey("validators")) return null;
@@ -97,7 +97,7 @@ class NetworkService {
 
     if (i < limit) {
       var apiUrl = await _storageService.getLiveRpcUrl();
-      var data = await http.get(apiUrl[0] + '/blocks?minHeight=${offset + i}&maxHeight=${offset + limit}',
+      var data = await http.get(apiUrl[0] + '/api/blocks?minHeight=${offset + i}&maxHeight=${offset + limit}',
           headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
       var bodyData = json.decode(data.body);
@@ -125,7 +125,8 @@ class NetworkService {
     final _storageService = getIt<StorageService>();
     transaction = null;
     var apiUrl = await _storageService.getLiveRpcUrl();
-    var data = await http.get(apiUrl[0] + '/transactions/$query', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var data =
+        await http.get(apiUrl[0] + '/api/transactions/$query', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var bodyData = json.decode(data.body);
     if (bodyData.containsKey("code")) return;
     transaction = BlockTransaction.fromJson(bodyData);
@@ -136,7 +137,7 @@ class NetworkService {
     final _storageService = getIt<StorageService>();
     block = null;
     var apiUrl = await _storageService.getLiveRpcUrl();
-    var data = await http.get(apiUrl[0] + '/blocks/$query', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var data = await http.get(apiUrl[0] + '/api/blocks/$query', headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var bodyData = json.decode(data.body);
     if (bodyData.containsKey("code"))
       await getTransactions(-1);

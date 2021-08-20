@@ -12,7 +12,7 @@ class RPCMethodsService {
     final _storageService = getIt<StorageService>();
     var apiUrl = await _storageService.getLiveRpcUrl();
 
-    var data = await http.get(apiUrl[0] + "/rpc_methods", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var data = await http.get(apiUrl[0] + "/api/rpc_methods", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var bodyData = json.decode(data.body);
 
     // Parse Get Methods

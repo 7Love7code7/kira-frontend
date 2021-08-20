@@ -20,7 +20,7 @@ class EncodeTransactionSender {
     final requestBodyJson = jsonEncode(stdEncodeMsg.toJson());
 
     // Get the response
-    http.post(apiUrl[0] + '/cosmos/txs/encode',
+    http.post(apiUrl[0] + '/api/cosmos/txs/encode',
         body: requestBodyJson, headers: {'Access-Control-Allow-Origin': apiUrl[1]}).then((response) {
       if (response.statusCode != 200) {
         final responseBody = json.decode(response.body);

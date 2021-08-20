@@ -45,7 +45,7 @@ Future<List<String>> loadInterxURL() async {
 
           if (response.body.contains('node_info') == true) {
             isSucceed = true;
-            _storageService.setLiveRpcUrl(rpcUrl + "/api", origin);
+            _storageService.setLiveRpcUrl(rpcUrl, origin);
           }
         } catch (e) {
           print(e);
@@ -60,7 +60,7 @@ Future<List<String>> loadInterxURL() async {
             if (response.body.contains('node_info') == true) {
               isSucceed = true;
               rpcUrl = 'https://' + rpcUrl;
-              _storageService.setLiveRpcUrl(rpcUrl + "/api", origin);
+              _storageService.setLiveRpcUrl(rpcUrl, origin);
             }
           } catch (e) {
             print(e);
@@ -75,7 +75,7 @@ Future<List<String>> loadInterxURL() async {
               if (response.body.contains('node_info') == true) {
                 isSucceed = true;
                 rpcUrl = 'https://' + rpcUrl + ':11000';
-                _storageService.setLiveRpcUrl(rpcUrl + "/api", origin);
+                _storageService.setLiveRpcUrl(rpcUrl, origin);
               }
             } catch (e) {
               print(e);
@@ -93,11 +93,11 @@ Future<List<String>> loadInterxURL() async {
       if (isSucceed == false && ((startsWithHttp && !noHttp) || noHttp) && rpcUrl.isNotEmpty) {
         rpcUrl = 'http://' + rpcUrl;
         rpcUrl = 'https://cors-anywhere.kira.network/' + rpcUrl;
-        _storageService.setLiveRpcUrl(rpcUrl + "/api", origin);
+        _storageService.setLiveRpcUrl(rpcUrl, origin);
       }
     }
 
-    return [rpcUrl + '/api', origin];
+    return [rpcUrl, origin];
   }
 
   return ["", origin];
@@ -114,8 +114,8 @@ Future<List> loadConfig() async {
   if (autoConnect == true) await _storageService.setInterxRPCUrl(rpcUrl);
 
   if (rpcUrl.contains('http://') == false) {
-    return [autoConnect, "http://" + rpcUrl + '/api'];
+    return [autoConnect, "http://" + rpcUrl];
   }
 
-  return [autoConnect, rpcUrl + '/api'];
+  return [autoConnect, rpcUrl];
 }

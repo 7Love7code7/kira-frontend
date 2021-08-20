@@ -38,7 +38,7 @@ class Strings {
   static const String withdrawalAddress = "Withdrawal Address";
   static const String passwordExpiresIn = "Password expires in (minutes)";
   static const String feeAmount = "Fee Amount";
-  static const String rpcURL = "Custom RPC URL";
+  static const String rpcURL = "Custom Rpc Url";
   static const String availableNetworks = "Available Networks";
   static const String availableAccounts = "Available Accounts";
   static const String networkInformation = "Network Information";
@@ -56,11 +56,9 @@ class Strings {
   static const String txConfirmation = 'Transaction Confirmation';
   static const String saifuTitle =
       "Transaction request QR code has been generated. Please connect and scan the QR code with your SAIFU mobile app";
-        static const String saifuShowQRTitle ="Scan the QR code provided by SAIFU to release your transaction to the blockchain";
-  static const String saifuScanQRText =
-      "If the QR Code has been altered, please restart this process";
-
-
+  static const String saifuShowQRTitle =
+      "Scan the QR code provided by SAIFU to release your transaction to the blockchain";
+  static const String saifuScanQRText = "If the QR Code has been altered, please restart this process";
 
   static const String mnemonicWords = "Mnemonic Words";
   static const String withdrawalAmount = "Amount";
@@ -72,7 +70,7 @@ class Strings {
   static const String copied = "Copied";
   static const String edit = "Edit";
   static const String add = "Add";
-  static const String finish = "Finish Editing";
+  static const String save = "Save";
   static const String remove = "Remove";
   static const String backToLogin = "Back to Login";
   static const String back = "Back";
@@ -86,8 +84,7 @@ class Strings {
 
   static const String failedToConnect = "Failed to connect";
   static const String selectFullNode = "Input or select address of the full-node you trust";
-  static const String requireSSL =
-      "Please specify `https://` if your address requires SSL certificate";
+  static const String requireSSL = "Please specify `https://` if your address requires SSL certificate";
   static const String selectLoginOption = "Select log-in option to access your account";
   static const String searchValidatorQuery = "Search validators by address or moniker";
   static const String searchBlockTxQuery = "Search blocks or transactions by hash or height";
@@ -114,7 +111,9 @@ class Strings {
   static const String invalidUrl = "URL is not valid";
   static const String invalidExpireTime = "Invalid expire time. Integer only.";
   static const String invalidFeeAmount = "Invalid fee amount. Integer only.";
-  static const String invalidCustomRpcURL = "Custom RPC URL should not be empty";
+  static const String invalidRpcUrl = "RPC url is invalid";
+  static const String checkingNodeStatus = "Checking node status ...";
+  static const String emptyRpcUrl = "Rpc url should not be empty";
   static const String withdrawalAmountOutOrRange = "Withdrawal amount is out of range";
   static const String accountNameInvalid = "Account name is invalid";
   static const String txHashCopied = "Transaction hash copied";
@@ -131,6 +130,7 @@ class Strings {
   static const String networkDescription = "Please select one of the available networks";
   static const String removeAccountDescription = "Please select the account and remove it";
   static const String removeAccountConfirmation = "Are you sure to remove the selected account?";
+  static const String removeValidatorConfirmation = "Are you sure to remove the selected validator node?";
   static const String editAccountName = "Edit the name of selected account";
   static const String noKeywordInput = "No keyword input";
   static const String invalidRequest = "Invalid request: Please check withdrawal address again";

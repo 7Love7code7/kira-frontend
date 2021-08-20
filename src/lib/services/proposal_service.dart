@@ -14,8 +14,8 @@ class ProposalService {
 
   Future<void> getProposalsCount() async {
     var apiUrl = await _storageService.getLiveRpcUrl();
-    var data = await http
-        .get(apiUrl[0] + "/kira/gov/proposals?count_total=true", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var data = await http.get(apiUrl[0] + "/api/kira/gov/proposals?count_total=true",
+        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     if (!bodyData.containsKey('pagination')) return;
@@ -55,7 +55,7 @@ class ProposalService {
 
     if (k < limit) {
       var data = await http.get(
-          apiUrl[0] + "/kira/gov/proposals?offset=${offset + k}&limit=${limit - k}&count_total=true",
+          apiUrl[0] + "/api/kira/gov/proposals?offset=${offset + k}&limit=${limit - k}&count_total=true",
           headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
       var bodyData = json.decode(data.body);
@@ -96,8 +96,8 @@ class ProposalService {
 
   Future<Voteability> checkVoteability(String proposalId, String account) async {
     var apiUrl = await _storageService.getLiveRpcUrl();
-    var data =
-        await http.get(apiUrl[0] + "/kira/gov/voters/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var data = await http
+        .get(apiUrl[0] + "/api/kira/gov/voters/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     var actors = bodyData as List<dynamic>;
@@ -125,8 +125,8 @@ class ProposalService {
 
   Future<Map> getVoteResult(String proposalId) async {
     var apiUrl = await _storageService.getLiveRpcUrl();
-    var data =
-        await http.get(apiUrl[0] + "/kira/gov/votes/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var data = await http
+        .get(apiUrl[0] + "/api/kira/gov/votes/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     var votes = bodyData as List<dynamic>;

@@ -8,32 +8,43 @@ abstract class StorageService {
   Future setCurrentAccount(String account);
   Future<Account> getCurrentAccount();
   Future removeCachedAccount();
+
   Future setFeeToken(String token);
   Future<Token> getFeeToken();
   Future removeFeeToken();
+
   Future<bool> setPassword(String password);
-  Future<bool> removePassword();
   Future<String> getPassword();
+  Future<bool> removePassword();
   Future<bool> checkPasswordExists();
+
   Future setFeeAmount(int feeAmount);
   Future<int> getFeeAmount();
+
   Future setExpireTime(Duration maxAge);
+  Future<int> getExpireTime();
   Future<bool> removeExpireTime();
   Future<bool> checkExpireTime();
-  Future<int> getExpireTime();
-  Future<String> getExplorerAddress();
+
   Future setExplorerAddress(String explorerAddress);
-  Future<String> getInterxRPCUrl();
+  Future<String> getExplorerAddress();
+
   Future setInterxRPCUrl(String interxRpcUrl);
+  Future<String> getInterxRPCUrl();
+
   Future setTopBarStatus(bool display);
   Future<bool> getTopBarStatus();
+
   Future setLoginStatus(bool isLoggedIn);
   Future<bool> getLoginStatus();
-  Future setLastFetchedTime(String key);
+
   Future setTopbarIndex(int index);
   Future<int> getTopbarIndex();
+
+  Future setLastFetchedTime(String key);
   Future setLastSearchedAccount(String account);
   Future<String> getLastSearchedAccount();
+
   Future setTabIndex(int tabIndex);
   Future<int> getTabIndex();
   Future<bool> checkPasswordExpired();
@@ -53,4 +64,6 @@ abstract class StorageService {
   Future<List<Transaction>> getTransactions(String address);
   Future setFaucetTokens(String _faucetTokenData);
   Future<List<String>> getFaucetTokens();
+  Future setValidators(List<String> _validatorData);
+  Future<List<String>> getValidators();
 }
