@@ -11,7 +11,7 @@ class QueryService {
     final _storageService = getIt<StorageService>();
     var apiUrl = await _storageService.getLiveRpcUrl();
 
-    final endpoint = apiUrl[0] + "/cosmos/auth/accounts/${account.bech32Address}";
+    final endpoint = apiUrl[0] + "/api/cosmos/auth/accounts/${account.bech32Address}";
     var response = await http.get(endpoint, headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     if (response.statusCode != 200) {

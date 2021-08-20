@@ -162,6 +162,7 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
     }
 
     List<Account> accounts = await _storageService.getAccountData();
+    print(accounts.length);
     if (accounts.length == 0) {
       setState(() {
         mnemonicError = Strings.createAccountError;

@@ -210,7 +210,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
       hexAddress = hex.encode(_convertBits(data, 5, 8));
 
       currentAccount = new Account(
-          networkInfo: new NetworkInfo(bech32Hrp: "kira", lcdUrl: apiUrl[0] + '/cosmos'),
+          networkInfo: new NetworkInfo(bech32Hrp: "kira", lcdUrl: apiUrl[0] + '/api/cosmos'),
           hexAddress: hexAddress,
           privateKey: "",
           publicKey: "");

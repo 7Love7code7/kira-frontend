@@ -38,7 +38,7 @@ class AccountService {
 
     final networkInfo = NetworkInfo(
       bech32Hrp: "kira",
-      lcdUrl: apiUrl[0] + "/cosmos",
+      lcdUrl: apiUrl[0] + "/api/cosmos",
     );
 
     account = Account.derive(wordList, networkInfo);

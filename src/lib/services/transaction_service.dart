@@ -22,7 +22,8 @@ class TransactionService {
     Transaction transaction = Transaction();
 
     var apiUrl = await _storageService.getLiveRpcUrl();
-    var response = await http.get(apiUrl[0] + "/cosmos/txs/$hash", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var response =
+        await http.get(apiUrl[0] + "/api/cosmos/txs/$hash", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var body = jsonDecode(response.body);
     if (body['message'] == "Internal error") return null;
 
@@ -63,7 +64,7 @@ class TransactionService {
     print("CORS ORIGIN: ${apiUrl[1]}");
 
     try {
-      var response = await http.get(apiUrl[0] + "/withdraws?account=$address&type=all&max=$max",
+      var response = await http.get(apiUrl[0] + "/api/withdraws?account=$address&type=all&max=$max",
           headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
       Map<String, dynamic> withdrawTxs = jsonDecode(response.body);
@@ -90,7 +91,7 @@ class TransactionService {
     }
 
     try {
-      var response = await http.get(apiUrl[0] + "/deposits?account=$address&type=all&max=$max",
+      var response = await http.get(apiUrl[0] + "/api/deposits?account=$address&type=all&max=$max",
           headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
       Map<String, dynamic> depositTxs = jsonDecode(response.body);
@@ -117,7 +118,7 @@ class TransactionService {
     }
 
     var ucResponse =
-        await http.get(apiUrl[0] + "/unconfirmed_txs", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+        await http.get(apiUrl[0] + "/api/unconfirmed_txs", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     Map<String, dynamic> ucBody = jsonDecode(ucResponse.body);
 
@@ -145,7 +146,7 @@ class TransactionService {
     String url = isWithdrawal == true ? "withdraws" : "deposits";
     String bech32Address = address;
 
-    var response = await http.get(apiUrl[0] + "/$url?account=$bech32Address&&type=all&&max=$max",
+    var response = await http.get(apiUrl[0] + "/api/$url?account=$bech32Address&&type=all&&max=$max",
         headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     Map<String, dynamic> body = jsonDecode(response.body);
@@ -173,7 +174,7 @@ class TransactionService {
     }
 
     var ucResponse =
-        await http.get(apiUrl[0] + "/unconfirmed_txs", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+        await http.get(apiUrl[0] + "/api/unconfirmed_txs", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     Map<String, dynamic> ucBody = jsonDecode(ucResponse.body);
 

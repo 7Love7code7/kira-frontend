@@ -24,6 +24,10 @@ class SharedPreferencesStorage extends StorageService {
   Future<List<Account>> getAccountData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String cachedAccountString = prefs.getString('ACCOUNTS');
+    if (cachedAccountString == null || cachedAccountString.isEmpty) {
+      return [];
+    }
+
     var array = cachedAccountString.split('---');
 
     List<Account> accounts = [];
@@ -456,5 +460,26 @@ class SharedPreferencesStorage extends StorageService {
     }
 
     return tokenList;
+  }
+
+  @override
+  Future setValidators(List<String> _validatorData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String validators = _validatorData.join("---");
+    prefs.setString("VALIDATORS", validators);
+  }
+
+  @override
+  Future<List<String>> getValidators() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String validatorString = prefs.getString('VALIDATORS');
+
+    if (validatorString == null || validatorString == "") {
+      return [];
+    }
+
+    List<String> validators = validatorString.split("---");
+
+    return validators;
   }
 }

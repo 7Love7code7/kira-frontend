@@ -34,12 +34,12 @@ class TokenService {
     var apiUrl = await _storageService.getLiveRpcUrl();
 
     var tokenAliases =
-        await http.get(apiUrl[0] + "/kira/tokens/aliases", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+        await http.get(apiUrl[0] + "/api/kira/tokens/aliases", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var tokenAliasesData = json.decode(tokenAliases.body);
     // tokenAliasesData = tokenAliasesData['data'];
 
     var balance = await http
-        .get(apiUrl[0] + "/cosmos/bank/balances/$address", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+        .get(apiUrl[0] + "/api/cosmos/bank/balances/$address", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var balanceData = json.decode(balance.body);
     var coins = balanceData['balances'];
 
@@ -107,7 +107,7 @@ class TokenService {
   Future<String> faucet(String address, String token) async {
     var apiUrl = await _storageService.getLiveRpcUrl();
 
-    String url = apiUrl[0] + "/faucet?claim=$address&token=$token";
+    String url = apiUrl[0] + "/api/faucet?claim=$address&token=$token";
     String response = "Success!";
 
     var data = await http.get(url, headers: {'Access-Control-Allow-Origin': apiUrl[1]});
@@ -151,7 +151,7 @@ class TokenService {
     List<String> tokenList = [];
     var apiUrl = await _storageService.getLiveRpcUrl();
 
-    var response = await http.get(apiUrl[0] + "/faucet", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var response = await http.get(apiUrl[0] + "/api/faucet", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var body = json.decode(response.body);
     var coins = body['balances'];
 

@@ -199,8 +199,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         setState(() {
           tokens = _tokenBalance;
           currentToken = _tokenBalance.length > 0 ? _tokenBalance[0] : null;
-          amountInterval =
-              currentToken != null && currentToken.balance != 0 ? currentToken.balance / 100 : 0;
+          amountInterval = currentToken != null && currentToken.balance != 0 ? currentToken.balance / 100 : 0;
         });
       }
     }
@@ -294,16 +293,12 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                                 ? [
                                     Text(title,
                                         style: TextStyle(
-                                            color: KiraColors.kGrayColor,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold)),
+                                            color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
                                   ]
                                 : [
                                     Text(title,
                                         style: TextStyle(
-                                            color: KiraColors.kGrayColor,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold)),
+                                            color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
                                     SizedBox(width: 5),
                                     Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward,
                                         color: KiraColors.white),
@@ -340,8 +335,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             children: [
               Container(
                 padding: EdgeInsets.only(top: 10, left: 15, bottom: 0),
-                child: Text(Strings.tokens,
-                    style: TextStyle(color: KiraColors.kGrayColor, fontSize: 12)),
+                child: Text(Strings.tokens, style: TextStyle(color: KiraColors.kGrayColor, fontSize: 12)),
               ),
               ButtonTheme(
                 alignedDropdown: true,
@@ -365,8 +359,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                         child: Container(
                             height: 25,
                             alignment: Alignment.topCenter,
-                            child: Text(token.ticker,
-                                style: TextStyle(color: KiraColors.white, fontSize: 18))),
+                            child: Text(token.ticker, style: TextStyle(color: KiraColors.white, fontSize: 18))),
                       );
                     }).toList()),
               ),
@@ -491,8 +484,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         children: [
           Text("Transaction Fee: " + feeAmount + " " + ticker,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w700, color: KiraColors.kGrayColor)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: KiraColors.kGrayColor)),
           Text(
             withdrawalAmount > txFee
                 ? 'You Will Get: ' + (withdrawalAmount - txFee).toStringAsFixed(6) + " " + ticker
@@ -513,14 +505,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     return Container(
         margin: EdgeInsets.only(bottom: 100),
         child: Column(children: [
-          Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: 500), child: addWithdrawalAmount()),
-                addWithdrawButton(context, true),
-              ]),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.end, children: [
+            ConstrainedBox(constraints: BoxConstraints(maxWidth: 500), child: addWithdrawalAmount()),
+            addWithdrawButton(context, true),
+          ]),
           addTransactionHashResult()
         ]));
   }
@@ -540,8 +528,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   Widget addGravatar(BuildContext context) {
-    final String reducedAddress = currentAccount.bech32Address
-        .replaceRange(10, currentAccount.bech32Address.length - 7, '....');
+    final String reducedAddress =
+        currentAccount.bech32Address.replaceRange(10, currentAccount.bech32Address.length - 7, '....');
 
     return Container(
         margin: EdgeInsets.only(bottom: 30),
@@ -630,15 +618,13 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 Text(
                   Strings.txDetails,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
                 ),
                 SizedBox(height: 30),
                 Text(
                   "Status: ",
                   textAlign: TextAlign.left,
-                  style:
-                      TextStyle(fontSize: 18, color: KiraColors.blue1, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, color: KiraColors.blue1, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 5),
                 Text(
@@ -650,8 +636,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 Text(
                   "TX Hash : ",
                   textAlign: TextAlign.left,
-                  style:
-                      TextStyle(fontSize: 18, color: KiraColors.blue1, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, color: KiraColors.blue1, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 5),
                 Text(
@@ -710,15 +695,13 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             final fee = StdFee(gas: '999999', amount: [feeV]);
 
             // Structure and organize the transcation
-            final stdTx =
-                TransactionBuilder.buildStdTx([message], stdFee: fee, memo: memoController.text);
+            final stdTx = TransactionBuilder.buildStdTx([message], stdFee: fee, memo: memoController.text);
 
             // Sign the transaction
             final signedStdTx = await TransactionSigner.signStdTx(currentAccount, stdTx);
 
             // Broadcast signed transaction
-            final result =
-                await TransactionSender.broadcastStdTx(account: currentAccount, stdTx: signedStdTx);
+            final result = await TransactionSender.broadcastStdTx(account: currentAccount, stdTx: signedStdTx);
 
             if (result == false) {
               setState(() {
@@ -757,9 +740,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               right: 0,
               child: ClipRRect(
                 borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(50),
-                    bottomLeft: Radius.circular(50),
-                    bottomRight: Radius.circular(50)),
+                    topLeft: Radius.circular(50), bottomLeft: Radius.circular(50), bottomRight: Radius.circular(50)),
                 child: Container(
                     color: Color.fromRGBO(31, 23, 76, 1),
                     child: IconButton(
@@ -792,19 +773,15 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                         final message = MsgSend(
                             fromAddress: currentAccount.bech32Address,
                             toAddress: addressController.text.trim(),
-                            amount: [
-                              StdCoin(denom: denomination, amount: withdrawalAmount.toString())
-                            ]);
+                            amount: [StdCoin(denom: denomination, amount: withdrawalAmount.toString())]);
 
                         final feeV = StdCoin(amount: feeAmount, denom: feeToken.denomination);
                         final fee = StdFee(gas: '999999', amount: [feeV]);
 
-                        final stdTx = TransactionBuilder.buildStdTx([message],
-                            stdFee: fee, memo: memoController.text);
+                        final stdTx = TransactionBuilder.buildStdTx([message], stdFee: fee, memo: memoController.text);
 
                         final Map<String, dynamic> sortedJson =
-                            await TransactionOfflineSigner.getOnlineInformation(
-                                currentAccount, stdTx);
+                            await TransactionOfflineSigner.getOnlineInformation(currentAccount, stdTx);
                         var qrData = json.encode(sortedJson);
                         dynamic processTranscation = await showDialog(
                             useRootNavigator: false,
@@ -850,17 +827,13 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                         var signature = json.decode(data);
 
                         // Structures and creates the transcation structure
-                        StdPublicKey stdPublicKey = StdPublicKey(
-                            key: signature['publicKey']['value'],
-                            type: signature['publicKey']['type']);
-                        Map<String, dynamic> map = {
-                          'signature': signature['signature'],
-                          'publicKey': stdPublicKey
-                        };
-                        final signOfflineStdTx = await TransactionOfflineSigner.signOfflineStdTx(
-                            currentAccount, stdTx, map);
-                        final result = await TransactionSender.broadcastStdTx(
-                            account: currentAccount, stdTx: signOfflineStdTx);
+                        StdPublicKey stdPublicKey =
+                            StdPublicKey(key: signature['publicKey']['value'], type: signature['publicKey']['type']);
+                        Map<String, dynamic> map = {'signature': signature['signature'], 'publicKey': stdPublicKey};
+                        final signOfflineStdTx =
+                            await TransactionOfflineSigner.signOfflineStdTx(currentAccount, stdTx, map);
+                        final result =
+                            await TransactionSender.broadcastStdTx(account: currentAccount, stdTx: signOfflineStdTx);
 
                         if (result == false) {
                           setState(() {
@@ -973,50 +946,47 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   Widget addWithdrawalAddress() {
-    return Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          AppTextField(
-            hintText: Strings.withdrawalAddress,
-            labelText: Strings.withdrawalAddress,
-            focusNode: addressFocusNode,
-            controller: addressController,
-            textInputAction: TextInputAction.done,
-            maxLines: 1,
-            autocorrect: false,
-            keyboardType: TextInputType.text,
-            textAlign: TextAlign.left,
-            onChanged: (String text) {
-              if (text.startsWith('kira') == false) {
-                setState(() {
-                  addressError = Strings.invalidWithdrawalAddress;
-                });
-              } else {
-                setState(() {
-                  addressError = "";
-                });
-              }
-            },
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-              color: KiraColors.white,
-              fontFamily: 'NunitoSans',
-            ),
+    return Column(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.end, children: [
+      AppTextField(
+        hintText: Strings.withdrawalAddress,
+        labelText: Strings.withdrawalAddress,
+        focusNode: addressFocusNode,
+        controller: addressController,
+        textInputAction: TextInputAction.done,
+        maxLines: 1,
+        autocorrect: false,
+        keyboardType: TextInputType.text,
+        textAlign: TextAlign.left,
+        onChanged: (String text) {
+          if (text.startsWith('kira') == false) {
+            setState(() {
+              addressError = Strings.invalidWithdrawalAddress;
+            });
+          } else {
+            setState(() {
+              addressError = "";
+            });
+          }
+        },
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: KiraColors.white,
+          fontFamily: 'NunitoSans',
+        ),
+      ),
+      if (addressError != '') SizedBox(height: 10),
+      if (addressError != '')
+        Text(
+          addressError,
+          textAlign: TextAlign.left,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: KiraColors.kYellowColor.withOpacity(0.8),
           ),
-          if (addressError != '') SizedBox(height: 10),
-          if (addressError != '')
-            Text(
-              addressError,
-              textAlign: TextAlign.left,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: KiraColors.kYellowColor.withOpacity(0.8),
-              ),
-            ),
-        ]);
+        ),
+    ]);
   }
 
   Widget addFirstLineSmall() {
@@ -1077,33 +1047,30 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   Widget addWithdrawalAmountInput() {
     String ticker = currentToken != null ? currentToken.ticker : "";
 
-    return Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          withdrawalAmountInput(),
-          SizedBox(height: 10),
-          Text(
-            'Available Balance ' + (amountInterval * 100).toStringAsFixed(6) + " " + ticker,
-            textAlign: TextAlign.left,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: KiraColors.white,
-            ),
+    return Column(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.end, children: [
+      withdrawalAmountInput(),
+      SizedBox(height: 10),
+      Text(
+        'Available Balance ' + (amountInterval * 100).toStringAsFixed(6) + " " + ticker,
+        textAlign: TextAlign.left,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: KiraColors.white,
+        ),
+      ),
+      if (amountError != '') SizedBox(height: 10),
+      if (amountError != '')
+        Text(
+          amountError,
+          textAlign: TextAlign.left,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: KiraColors.kYellowColor.withOpacity(0.8),
           ),
-          if (amountError != '') SizedBox(height: 10),
-          if (amountError != '')
-            Text(
-              amountError,
-              textAlign: TextAlign.left,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: KiraColors.kYellowColor.withOpacity(0.8),
-              ),
-            ),
-        ]);
+        ),
+    ]);
   }
 
   Widget addSecondLineSmall() {
@@ -1136,24 +1103,18 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   refreshTableSort() {
     if (sortIndex == 0) {
-      transactions
-          .sort((a, b) => isAscending ? a.hash.compareTo(b.hash) : b.hash.compareTo(a.hash));
+      transactions.sort((a, b) => isAscending ? a.hash.compareTo(b.hash) : b.hash.compareTo(a.hash));
     } else if (sortIndex == 1) {
-      transactions.sort((a, b) =>
-          isAscending ? a.recipient.compareTo(b.recipient) : b.sender.compareTo(a.recipient));
+      transactions.sort((a, b) => isAscending ? a.recipient.compareTo(b.recipient) : b.sender.compareTo(a.recipient));
     } else if (sortIndex == 2) {
       if (ResponsiveWidget.isSmallScreen(context))
-        transactions.sort(
-            (a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+        transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
       else
-        transactions.sort(
-            (a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+        transactions.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
     } else if (sortIndex == 3) {
-      transactions
-          .sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
+      transactions.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
     } else {
-      transactions.sort(
-          (a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+      transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
     }
     transactionsController.add(null);
   }
