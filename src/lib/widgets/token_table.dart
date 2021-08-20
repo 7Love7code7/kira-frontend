@@ -77,7 +77,6 @@ class TokenTableState extends State<TokenTable> {
                 ),
                 child: Column(children: <Widget>[
                   addNavigateControls(),
-                  addTableHeader(),
                   ...currentTokens
                       .map((token) => ExpandableNotifier(
                             child: ScrollOnExpand(
@@ -140,34 +139,6 @@ class TokenTableState extends State<TokenTable> {
               size: 20, color: widget.page < totalPages ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2)),
         ),
       ],
-    );
-  }
-
-  Widget addTableHeader() {
-    List<String> titles = ['Token Name', 'Balance'];
-
-    return Container(
-      padding: EdgeInsets.all(5),
-      margin: EdgeInsets.only(top: 15, right: 40, bottom: 15),
-      child: Row(
-        children: titles
-            .asMap()
-            .map(
-              (index, title) => MapEntry(
-                  index,
-                  Expanded(
-                      flex: 1,
-                      child: InkWell(
-                          onTap: () => this.setState(() {}),
-                          child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-                            Text(title,
-                                style:
-                                    TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-                          ])))),
-            )
-            .values
-            .toList(),
-      ),
     );
   }
 

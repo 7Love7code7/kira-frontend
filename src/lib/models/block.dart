@@ -27,7 +27,7 @@ class Block {
 
   String get getHash => '0x$hash';
   String get getReducedHash => '0x$hash'.replaceRange(7, hash.length - 3, '....');
-  String get getProposer => validator != null ? validator.moniker : "";
+  String get getProposer => validator != null ? validator.moniker : validator.address;
 
   Block(
       {this.blockSize = 0,

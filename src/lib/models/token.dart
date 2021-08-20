@@ -50,5 +50,5 @@ class Token {
 
   Map<String, dynamic> toJson() => _$TokenToJson(this);
   String toString() => jsonEncode(toJson());
-  double get getTokenBalanceInTicker => balance * pow(10, -decimals);
+  double get getTokenBalanceInTicker => balance / pow(10, decimals);
 }

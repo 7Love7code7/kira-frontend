@@ -273,7 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             isNetworkHealthy: isNetworkHealthy,
             childWidget: Container(
               alignment: Alignment.center,
-              margin: EdgeInsets.only(top: 50, bottom: 50),
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
               padding: const EdgeInsets.symmetric(horizontal: 30),
               child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: 500),

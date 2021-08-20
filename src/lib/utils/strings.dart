@@ -89,8 +89,6 @@ class Strings {
   static const String requireSSL =
       "Please specify `https://` if your address requires SSL certificate";
   static const String selectLoginOption = "Select log-in option to access your account";
-  static const String searchValidatorQuery = "Search validators by address or moniker";
-  static const String searchBlockTxQuery = "Search blocks or transactions by hash or height";
   static const String insufficientBalance = "Insufficient balance for this account";
   static const String copyRight = "Copyright @ 2021 KIRA Network";
   static const String passwordBlank = "Password cannot be empty";
@@ -142,6 +140,7 @@ class Strings {
   static const String validatorAccount = "Search account";
   static const String proposalQuery = "Search proposals by address";
   static const String blockTransactionQuery = "Search blocks or transactions by hash or height";
+  static const String explorerQuery = "Search Account, Validator, Block, Transaction";
   static const String voteProposal = "Vote to the proposal";
   static const String voteUpdate = "Update your vote";
   static const String voteHint = "Select a vote option";

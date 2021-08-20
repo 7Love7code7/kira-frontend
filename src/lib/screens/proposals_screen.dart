@@ -28,6 +28,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   String pendingTxHash;
   String cancelAccountNumber;
   String cancelSequence;
+  bool isFiltering = false;
   String query = "";
   bool moreLoading = false;
 
@@ -134,30 +135,31 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         body: HeaderWrapper(
-            isNetworkHealthy: isNetworkHealthy,
-            childWidget: Container(
-                alignment: Alignment.center,
-                margin: EdgeInsets.only(top: 50, bottom: 50),
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 1200),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      addHeader(),
-                      addTableHeader(),
-                      moreLoading
-                          ? addLoadingIndicator()
-                          : proposals.isEmpty
-                              ? Container(
-                                  margin: EdgeInsets.only(top: 20, left: 20),
-                                  child: Text("No proposals to show",
-                                      style: TextStyle(
-                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                              : addProposalsTable(),
-                    ],
-                  ),
-                ))));
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1200),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    addHeaderTitle(),
+                    isFiltering ? addSearchInput() : Container(),
+                    addTableHeader(),
+                    moreLoading
+                        ? addLoadingIndicator()
+                        : proposals.isEmpty
+                            ? Container(
+                                margin: EdgeInsets.only(top: 20, left: 20),
+                                child: Text("No proposals to show",
+                                    style: TextStyle(
+                                        color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                            : addProposalsTable(),
+                  ],
+                ),
+              ))));
   }
 
   Widget addLoadingIndicator() {
@@ -174,38 +176,61 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
         ));
   }
 
-  Widget addHeader() {
-    return Container(
-      margin: EdgeInsets.only(bottom: 40),
-      child: ResponsiveWidget.isLargeScreen(context)
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                addHeaderTitle(),
-                addSearchInput(),
-              ],
-            )
-          : Column(
-              children: <Widget>[
-                addHeaderTitle(),
-                addSearchInput(),
-              ],
-            ),
-    );
-  }
-
   Widget addHeaderTitle() {
     return Container(
-        margin: EdgeInsets.only(bottom: 50),
-        child: Text(
-          Strings.proposals,
-          textAlign: TextAlign.left,
-          style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
-        ));
+        margin: EdgeInsets.only(bottom: 20),
+        child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                Strings.proposals,
+                textAlign: TextAlign.left,
+                style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+              ),
+              Container(
+                margin: EdgeInsets.only(right: 20),
+                child: isFiltering
+                    ? InkWell(
+                    onTap: () {
+                      this.setState(() {
+                        isFiltering = false;
+                        expandedId = "";
+                      });
+                    },
+                    child: Icon(Icons.close, color: KiraColors.white, size: 30))
+                    : Tooltip(
+                  message: Strings.proposalQuery,
+                  waitDuration: Duration(milliseconds: 500),
+                  decoration: BoxDecoration(color: KiraColors.purple1, borderRadius: BorderRadius.circular(4)),
+                  verticalOffset: 20,
+                  preferBelow: ResponsiveWidget.isSmallScreen(context),
+                  margin: EdgeInsets.only(
+                      right: ResponsiveWidget.isSmallScreen(context)
+                          ? 20
+                          : ResponsiveWidget.isMediumScreen(context)
+                          ? 50
+                          : 110),
+                  textStyle: TextStyle(color: KiraColors.white.withOpacity(0.8)),
+                  child: InkWell(
+                    onTap: () {
+                      this.setState(() {
+                        isFiltering = true;
+                        expandedId = "";
+                      });
+                    },
+                    child: Icon(Icons.search, color: KiraColors.white, size: 30),
+                  ),
+                ),
+              ),
+            ],
+        ),
+    );
   }
 
   Widget addSearchInput() {
     return Container(
+      margin: EdgeInsets.symmetric(vertical: 10),
       width: 500,
       child: AppTextField(
         hintText: Strings.proposalQuery,
@@ -237,7 +262,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   Widget addTableHeader() {
     return Container(
       padding: EdgeInsets.all(5),
-      margin: EdgeInsets.only(right: 40, bottom: 20),
+      margin: EdgeInsets.only(top: 20, right: 40, bottom: 10),
       child: Row(
         children: [
           Expanded(
