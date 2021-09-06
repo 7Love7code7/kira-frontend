@@ -53,4 +53,33 @@ class AccountService {
     await _storageService.setCurrentAccount(account.toString());
     return account;
   }
+
+  Future<Account> importAccount(String mnemonic, String password, String accountName) async {
+    Account account;
+
+    List<String> wordList = mnemonic.split(' ');
+    List<int> bytes = utf8.encode(password);
+
+    var apiUrl = await _storageService.getLiveRpcUrl();
+
+    // Get hash value of password and use it to encrypt mnemonic
+    var hashDigest = Blake256().update(bytes).digest();
+
+    final networkInfo = NetworkInfo(
+      bech32Hrp: "kira",
+      lcdUrl: apiUrl[0] + "/api/cosmos",
+    );
+
+    account = Account.derive(wordList, networkInfo);
+
+    account.secretKey = String.fromCharCodes(hashDigest);
+
+    // Encrypt Mnemonic with AES-256 algorithm
+    account.encryptedMnemonic = encryptAESCryptoJS(mnemonic, account.secretKey);
+    account.checksum = encryptAESCryptoJS('kira', account.secretKey);
+    account.name = accountName;
+
+    await _storageService.setCurrentAccount(account.toJsonString());
+    return account;
+  }
 }

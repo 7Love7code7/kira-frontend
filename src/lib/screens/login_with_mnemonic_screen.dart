@@ -16,6 +16,7 @@ class LoginWithMnemonicScreen extends StatefulWidget {
 }
 
 class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
+  AccountService _accountService = getIt<AccountService>();
   String mnemonicError = "";
   bool isNetworkHealthy = false;
 
@@ -156,19 +157,19 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
     // Check if mnemonic is valid
     if (bip39.validateMnemonic(mnemonic) == false) {
       setState(() {
-        mnemonicError = "Invalid Mnemonic";
+        mnemonicError = Strings.mnemonicWrong;
       });
       return;
     }
 
     List<Account> accounts = await _storageService.getAccountData();
-    print(accounts.length);
-    if (accounts.length == 0) {
-      setState(() {
-        mnemonicError = Strings.createAccountError;
-      });
-      return;
-    }
+    // print(accounts.length);
+    // if (accounts.length == 0) {
+    //   setState(() {
+    //     mnemonicError = Strings.mnemonicWrong;
+    //   });
+    //   return;
+    // }
 
     bool accountFound = false;
     Account fAccount;
@@ -181,20 +182,17 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
     }
 
     if (accountFound == false) {
-      setState(() {
-        mnemonicError = Strings.mnemonicWrong;
-      });
-    } else {
-      final _accountService = getIt<AccountService>();
-      await _accountService.setCurrentAccount(fAccount);
+      fAccount = await _accountService.importAccount(mnemonic, "12345678", "Imported Account");
+      _storageService.setAccountData(fAccount.toJsonString());
+    } else {}
 
-      BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(fAccount.hexAddress));
+    await _accountService.setCurrentAccount(fAccount);
+    BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(fAccount.hexAddress));
 
-      await _storageService.setPassword('12345678');
-      await _storageService.setLoginStatus(true);
+    await _storageService.setPassword('12345678');
+    await _storageService.setLoginStatus(true);
 
-      Navigator.pushReplacementNamed(context, '/account');
-    }
+    Navigator.pushReplacementNamed(context, '/account');
   }
 
   Widget addButtonsSmall() {
