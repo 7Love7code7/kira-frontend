@@ -228,7 +228,7 @@ class _ProposalsTableState extends State<ProposalsTable> {
   }
 
   Widget addRowBody(Proposal proposal) {
-    final fieldWidth = ResponsiveWidget.isSmallScreen(context) ? 100.0 : 150.0;
+    final fieldWidth = ResponsiveWidget.isSmallScreen(context) ? 80.0 : 150.0;
     final voteOptions = proposal.availableVoteOptions().map((e) => VoteOption.values.indexOf(e)).toList();
     var allColors = [KiraColors.kGrayColor, KiraColors.green3, KiraColors.orange1, KiraColors.danger, KiraColors.danger];
     var colorList = allColors.where((element) {
