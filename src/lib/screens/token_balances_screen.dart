@@ -132,7 +132,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
       String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
       rpc = rpc.replaceAll("http://", "");
       rpc = rpc.replaceAll("https://", "");
-      Navigator.pushReplacementNamed(context, '/account?addr=$query&type=$tabIndex&rpc=$rpc');
+      Navigator.pushReplacementNamed(context, '/account?addr=$query&type=$tabIndex&rpc=${Uri.encodeComponent(rpc)}');
     }
   }
 
@@ -367,7 +367,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         isNetworkHealthy = false;
       });
 
-      _storageService.setInterxRPCUrl(customInterxRPCUrl);
+      _storageService.setInterxRPCUrl(Uri.decodeComponent(customInterxRPCUrl));
     } else {
       _storageService.getLoginStatus().then((loggedIn) {
         if (loggedIn) {
@@ -410,7 +410,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
             childWidget: Container(
               alignment: Alignment.center,
               margin: EdgeInsets.only(bottom: 30),
-              padding: const EdgeInsets.symmetric(horizontal: 30),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: 1000),
                 child: Column(
@@ -448,28 +448,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
             });
           },
           child: isValidAddress ? Icon(Icons.close, color: KiraColors.white, size: 30) : Container())
-          : Tooltip(
-        message: Strings.explorerQuery,
-        waitDuration: Duration(milliseconds: 500),
-        decoration: BoxDecoration(color: KiraColors.purple1, borderRadius: BorderRadius.circular(4)),
-        verticalOffset: 20,
-        preferBelow: ResponsiveWidget.isSmallScreen(context),
-        margin: EdgeInsets.only(
-            right: ResponsiveWidget.isSmallScreen(context)
-                ? 20
-                : ResponsiveWidget.isMediumScreen(context)
-                ? 50
-                : 110),
-        textStyle: TextStyle(color: KiraColors.white.withOpacity(0.8)),
-        child: InkWell(
-          onTap: () {
-            this.setState(() {
-              isFiltering = true;
-            });
-          },
-          child: Icon(Icons.search, color: KiraColors.white, size: 30),
-        ),
-      ),
+          : Container()
     );
   }
 
@@ -677,7 +656,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   Widget addAccountAddress() {
     return Container(
       padding: EdgeInsets.all(5),
-      margin: EdgeInsets.only(top: isFiltering ? 20 : 0, left: 15, right: ResponsiveWidget.isSmallScreen(context) ? 40 : 65, bottom: 20),
+      margin: EdgeInsets.only(top: isFiltering ? 20 : 0, left: 15, bottom: 20),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -723,7 +702,25 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                 );
               },
               child: Icon(Icons.qr_code, size: 20, color: KiraColors.white),
-            )
+            ),
+            SizedBox(width: 15),
+            isFiltering ? Container() :
+              Tooltip(
+                message: Strings.explorerQuery,
+                waitDuration: Duration(milliseconds: 500),
+                decoration: BoxDecoration(color: KiraColors.purple1, borderRadius: BorderRadius.circular(4)),
+                verticalOffset: 20,
+                preferBelow: ResponsiveWidget.isSmallScreen(context),
+                textStyle: TextStyle(color: KiraColors.white.withOpacity(0.8)),
+                child: InkWell(
+                  onTap: () {
+                    this.setState(() {
+                      isFiltering = true;
+                    });
+                  },
+                  child: Icon(Icons.search, color: KiraColors.white, size: 30),
+                ),
+              ),
           ])
         ]));
   }
