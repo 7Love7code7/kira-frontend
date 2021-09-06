@@ -190,7 +190,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                         )
                     ),
                     Expanded(
-                        flex: 3,
+                        flex: ResponsiveWidget.isSmallScreen(context) ? 6 : 3,
                         child: Align(
                             child: InkWell(
                               onTap: () {
@@ -206,8 +206,9 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
                             )
                         )
                     ),
+                    ResponsiveWidget.isSmallScreen(context) ? Container() :
                     Expanded(
-                        flex: ResponsiveWidget.isSmallScreen(context) ? 4 : 9,
+                        flex: 9,
                         child: Align(
                             child: InkWell(
                                 onTap: () {
@@ -254,7 +255,7 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
   }
 
   Widget addRowBody(Validator validator) {
-    final fieldWidth = ResponsiveWidget.isSmallScreen(context) ? 100.0 : 150.0;
+    final fieldWidth = ResponsiveWidget.isSmallScreen(context) ? 80.0 : 150.0;
 
     return Container(
         padding: EdgeInsets.all(10),

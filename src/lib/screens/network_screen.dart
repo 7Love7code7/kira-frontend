@@ -408,7 +408,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                               Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
                             ]))),
           Expanded(
-              flex: 3,
+              flex: ResponsiveWidget.isSmallScreen(context) ? 6 : 3,
               child: InkWell(
                   onTap: () => this.setState(() {
                         if (sortIndex == 2)
@@ -435,8 +435,9 @@ class _NetworkScreenState extends State<NetworkScreen> {
                               SizedBox(width: 5),
                               Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
                             ]))),
+          ResponsiveWidget.isSmallScreen(context) ? Container() :
           Expanded(
-              flex: ResponsiveWidget.isSmallScreen(context) ? 4 : 9,
+              flex: 9,
               child: Text("Validator Address",
                   textAlign: TextAlign.center,
                   style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold))),
