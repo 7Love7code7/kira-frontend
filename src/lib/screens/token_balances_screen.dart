@@ -418,19 +418,18 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                   children: <Widget>[
                     addHeader(),
                     !isLoggedIn ? addSearchInput() : Container(),
-                    !isTyping && query != "" && (isSearchFinished && !isValidAddress) ? addHeaderTitle() : Container(),
+                    !isTyping && query != "" ? (!isSearchFinished ? addLoadingIndicator() : !isValidAddress ? addFailedMessage() : Container()) : Container(),
                     isValidAddress ? addAccountAddress() : Container(),
                     isValidAddress ? Wrap(children: tabItems()) : Container(),
                     (isLoggedIn || isValidAddress) ? addTableHeader() : Container(),
                     isValidAddress && tabType == 0 ? addDepositTransactionsTable() : Container(),
                     isValidAddress && tabType == 1 ? addWithdrawalTransactionsTable() : Container(),
-                    (isLoggedIn || (isValidAddress && tabType == 2)) ? (tokens.isEmpty)
+                    (isLoggedIn || (isValidAddress && tabType == 2)) ? (tokens.isEmpty
                       ? Container(
                         margin: EdgeInsets.only(top: 20, left: 20),
                         child: Text("No tokens",
-                          style: TextStyle(
-                            color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                    : addTokenTable() : Container(),
+                          style: TextStyle(color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                    : addTokenTable()) : Container(),
                   ],
                 ),
               ))));
@@ -456,7 +455,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     return Container(
       width: 180,
       height: 180,
-      margin: EdgeInsets.symmetric(vertical: 0, horizontal: 30),
       padding: EdgeInsets.all(0),
       decoration: new BoxDecoration(
         color: Colors.white,
@@ -525,7 +523,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     ) : Container();
   }
 
-  Widget addHeaderTitle() {
+  Widget addFailedMessage() {
     return Container(
         margin: EdgeInsets.only(top: 30),
         child: Text(Strings.searchFailed,
@@ -782,7 +780,8 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   Widget addDepositTransactionsTable() {
-    return Container(
+    return !isTyping && query != "" && !isSearchFinished ? addLoadingIndicator() :
+      depositTrx.isEmpty ? Container() : Container(
         margin: EdgeInsets.only(bottom: 50),
         child: TransactionsTable(
           page: page,
@@ -800,7 +799,8 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   Widget addWithdrawalTransactionsTable() {
-    return Container(
+    return !isTyping && query != "" && !isSearchFinished ? addLoadingIndicator() :
+      withdrawTrx.isEmpty ? Container() : Container(
         margin: EdgeInsets.only(bottom: 50),
         child: TransactionsTable(
           page: page,
@@ -882,7 +882,8 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   Widget addTokenTable() {
-    return Container(
+    return !isTyping && query != "" && !isSearchFinished ? addLoadingIndicator() :
+      tokens.isEmpty ? Container() : Container(
         margin: EdgeInsets.only(bottom: 50),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
