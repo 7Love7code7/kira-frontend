@@ -51,6 +51,9 @@ class TransactionService {
       }
     }
 
+    transactions.add(transaction);
+    _storageService.setTransactions(currentAddress, jsonEncode(transactions));
+
     return transaction;
   }
 
