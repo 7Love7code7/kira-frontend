@@ -1,27 +1,18 @@
-// import 'package:hex/hex.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:jdenticon/jdenticon.dart';
+
 import 'package:kira_auth/helpers/tx_offline_signer.dart';
-import 'package:kira_auth/models/account.dart';
-import 'package:kira_auth/models/token.dart';
-import 'package:kira_auth/models/transaction.dart';
-import 'package:kira_auth/models/transactions/messages/msg_send.dart';
-import 'package:kira_auth/models/transactions/std_coin.dart';
-import 'package:kira_auth/models/transactions/std_fee.dart';
-import 'package:kira_auth/models/transactions/std_public_key.dart';
-import 'package:kira_auth/widgets/signature_dialog.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/helpers/export.dart';
 import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class WithdrawalScreen extends StatefulWidget {
   @override
@@ -29,10 +20,11 @@ class WithdrawalScreen extends StatefulWidget {
 }
 
 class _WithdrawalScreenState extends State<WithdrawalScreen> {
-  TokenService tokenService = TokenService();
-  GravatarService gravatarService = GravatarService();
-  TransactionService transactionService = TransactionService();
-  StatusService statusService = StatusService();
+  // final _gravatarService = getIt<GravatarService>();
+  final _tokenService = getIt<TokenService>();
+  final _accountService = getIt<AccountService>();
+  final _storageService = getIt<StorageService>();
+  final _transactionService = getIt<TransactionService>();
 
   List<Token> tokens = [];
   List<Transaction> transactions = [];
@@ -62,6 +54,12 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   FocusNode memoFocusNode;
   TextEditingController memoController;
+  String expandedHash;
+  bool initialFetched = false;
+  int page = 1;
+  StreamController transactionsController = StreamController.broadcast();
+  int sortIndex = 0;
+  bool isAscending = true;
 
   @override
   void initState() {
@@ -76,25 +74,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     memoController = TextEditingController();
 
     getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-          currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-        }
-        if (BlocProvider.of<TokenBloc>(context).state.feeToken != null) {
-          feeToken = BlocProvider.of<TokenBloc>(context).state.feeToken;
-        }
-        getWithdrawalTransactions();
-      });
-    }
-
     getTokens();
     getCachedFeeAmount();
-
-    if (feeToken == null) {
-      getFeeToken();
-    }
+    getFeeToken();
+    getWithdrawalTransactions();
   }
 
   @override
@@ -102,39 +85,67 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     amountController.dispose();
     addressController.dispose();
     memoController.dispose();
+    transactionsController.close();
     super.dispose();
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
       });
     }
   }
 
   void getWithdrawalTransactions() async {
-    if (currentAccount != null) {
-      List<Transaction> wTxs =
-          await transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: true);
+    Account curAccount;
+    curAccount = _accountService.currentAccount;
 
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (mounted) {
       setState(() {
-        transactions = wTxs;
+        currentAccount = curAccount;
       });
+    }
+
+    if (curAccount != null) {
+      List<Transaction> _transactions = _transactionService.transactions;
+
+      if (_transactions.length == 0) {
+        _transactions = await _storageService.getTransactions(curAccount.bech32Address);
+      }
+
+      if (_transactions.length == 0) {
+        bool result = await _transactionService.getTransactions(curAccount.bech32Address);
+        if (!result)
+          setState(() {
+            initialFetched = false;
+          });
+        _transactions = _transactionService.transactions;
+      }
+
+      if (mounted) {
+        setState(() {
+          transactions = _transactions.where((element) => element.action == "Withdraw").toList();
+          initialFetched = true;
+        });
+      }
     }
   }
 
   void getNewTransaction(hash) async {
-    Transaction tx = await transactionService.getTransaction(hash: hash);
+    Transaction tx = await _transactionService.getTransaction(hash: hash);
     tx.isNew = true;
     setState(() {
       transactions.add(tx);
@@ -142,25 +153,17 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   void getCachedFeeAmount() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int cFeeAmount = await _storageService.getFeeAmount();
+
     setState(() {
-      int cfeeAmount = prefs.getInt('feeAmount');
-      if (cfeeAmount.runtimeType != Null)
-        feeAmount = cfeeAmount.toString();
-      else
-        feeAmount = '100';
+      feeAmount = cFeeAmount.toString();
     });
   }
 
   void getFeeToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    Token fToken = await _storageService.getFeeToken();
     setState(() {
-      String feeTokenString = prefs.getString('feeToken');
-      if (feeTokenString.runtimeType != Null) {
-        feeToken = Token.fromString(feeTokenString);
-      } else {
-        feeToken = Token(assetName: "Kira", ticker: 'KEX', denomination: "ukex", decimals: 6);
-      }
+      feeToken = fToken;
     });
   }
 
@@ -173,54 +176,77 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   }
 
   void getTokens() async {
-    if (currentAccount != null && mounted) {
-      await tokenService.getTokens(currentAccount.bech32Address);
+    Account curAccount;
 
-      setState(() {
-        tokens = tokenService.tokens;
-        currentToken = tokens.length > 0 ? tokens[0] : null;
-        amountInterval = currentToken != null && currentToken.balance != 0 ? currentToken.balance / 100 : 0;
-      });
+    curAccount = _accountService.currentAccount;
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (curAccount != null) {
+      List<Token> _tokenBalance = _tokenService.tokens;
+
+      if (_tokenBalance.length == 0) {
+        _tokenBalance = await _storageService.getTokenBalance(curAccount.bech32Address);
+      }
+
+      if (_tokenBalance.length == 0) {
+        await _tokenService.getTokens(curAccount.bech32Address);
+        _tokenBalance = _tokenService.tokens;
+      }
+
+      if (mounted) {
+        setState(() {
+          tokens = _tokenBalance;
+          currentToken = _tokenBalance.length > 0 ? _tokenBalance[0] : null;
+          amountInterval = currentToken != null && currentToken.balance != 0 ? currentToken.balance / 100 : 0;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
+    final _storageService = getIt<StorageService>();
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       }
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                    alignment: Alignment.center,
-                    margin: EdgeInsets.only(top: 50, bottom: 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1000),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            if (currentAccount != null) addGravatar(context),
-                            if (currentToken == null) addDescription(),
-                            ResponsiveWidget.isSmallScreen(context) ? addFirstLineSmall() : addFirstLineBig(),
-                            ResponsiveWidget.isSmallScreen(context) ? addSecondLineSmall() : addSecondLineBig(),
-                            ResponsiveWidget.isSmallScreen(context)
-                                ? addWithdrawalAmountSmall()
-                                : addWithdrawalAmountBig(),
-                            // if (loading == true) addLoadingIndicator(),
-                            addWithdrawalTransactionsTable(),
-                          ],
-                        )),
-                  ));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1000),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      if (currentAccount != null) addGravatar(context),
+                      if (currentToken == null) addDescription(),
+                      ResponsiveWidget.isSmallScreen(context) ? addFirstLineSmall() : addFirstLineBig(),
+                      ResponsiveWidget.isSmallScreen(context) ? addSecondLineSmall() : addSecondLineBig(),
+                      ResponsiveWidget.isSmallScreen(context)
+                          ? addWithdrawalAmountSmall(context)
+                          : addWithdrawalAmountBig(context),
+                      addTableHeader(),
+                      !initialFetched
+                          ? addLoadingIndicator()
+                          : transactions.isEmpty
+                              ? Container(
+                                  margin: EdgeInsets.only(top: 20, left: 20),
+                                  child: Text("No withdrawal transactions to show",
+                                      style: TextStyle(
+                                          color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                              : addTransactionsTable(),
+                    ],
+                  )),
+            )));
   }
 
   Widget addHeaderTitle() {
@@ -231,6 +257,58 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
           textAlign: TextAlign.left,
           style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
         ));
+  }
+
+  Widget addTableHeader() {
+    List<String> titles = ResponsiveWidget.isSmallScreen(context)
+        ? ['Tx Hash', 'Recipient', 'Status']
+        : ['Tx Hash', 'Recipient', 'Amount', 'Time', 'Status'];
+    List<int> flexes = [2, 2, 1, 1, 1];
+
+    return Container(
+      padding: EdgeInsets.all(5),
+      margin: EdgeInsets.only(top: 30, right: 40, bottom: 20),
+      child: Row(
+        children: titles
+            .asMap()
+            .map(
+              (index, title) => MapEntry(
+                  index,
+                  Expanded(
+                      flex: flexes[index],
+                      child: InkWell(
+                          onTap: () => this.setState(() {
+                                if (sortIndex == index)
+                                  isAscending = !isAscending;
+                                else {
+                                  sortIndex = index;
+                                  isAscending = true;
+                                }
+                                expandedHash = '';
+                                refreshTableSort();
+                              }),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: sortIndex != index
+                                ? [
+                                    Text(title,
+                                        style: TextStyle(
+                                            color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                                  ]
+                                : [
+                                    Text(title,
+                                        style: TextStyle(
+                                            color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                                    SizedBox(width: 5),
+                                    Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                        color: KiraColors.white),
+                                  ],
+                          )))),
+            )
+            .values
+            .toList(),
+      ),
+    );
   }
 
   Widget addDescription() {
@@ -295,7 +373,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
     return AppTextField(
       labelText: Strings.withdrawalAmount,
-      hintText: 'Minimum Withdrawal 0.05 ' + ticker,
+      // hintText: 'Minimum Withdrawal 0' + ticker,
       focusNode: amountFocusNode,
       controller: amountController,
       inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
@@ -423,19 +501,19 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     ]);
   }
 
-  Widget addWithdrawalAmountBig() {
+  Widget addWithdrawalAmountBig(BuildContext context) {
     return Container(
         margin: EdgeInsets.only(bottom: 100),
         child: Column(children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.end, children: [
             ConstrainedBox(constraints: BoxConstraints(maxWidth: 500), child: addWithdrawalAmount()),
-            addWithdrawButton(true),
+            addWithdrawButton(context, true),
           ]),
           addTransactionHashResult()
         ]));
   }
 
-  Widget addWithdrawalAmountSmall() {
+  Widget addWithdrawalAmountSmall(BuildContext context) {
     return Container(
         margin: EdgeInsets.only(bottom: 100),
         child: Column(
@@ -445,13 +523,11 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               addWithdrawalAmount(),
               addTransactionHashResult(),
               SizedBox(height: 30),
-              addWithdrawButton(false)
+              addWithdrawButton(context, false)
             ]));
   }
 
   Widget addGravatar(BuildContext context) {
-    // final String gravatar = gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
-
     final String reducedAddress =
         currentAccount.bech32Address.replaceRange(10, currentAccount.bech32Address.length - 7, '....');
 
@@ -519,7 +595,67 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         ));
   }
 
-  Widget addWithdrawButton(isBig) {
+  showTransactionStatus(BuildContext context) {
+    Widget cancelButton = TextButton(
+      child: Text(
+        Strings.cancel,
+        style: TextStyle(fontSize: 16),
+        textAlign: TextAlign.center,
+      ),
+      onPressed: () {
+        Navigator.of(context, rootNavigator: true).pop();
+      },
+    );
+
+    // show the dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+            width: 450,
+            child: CustomDialog(
+              contentWidgets: [
+                Text(
+                  Strings.txDetails,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 30),
+                Text(
+                  "Status: ",
+                  textAlign: TextAlign.left,
+                  style: TextStyle(fontSize: 18, color: KiraColors.blue1, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 5),
+                Text(
+                  "$transactionResult",
+                  textAlign: TextAlign.left,
+                  style: TextStyle(fontSize: 18, color: KiraColors.black),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  "TX Hash : ",
+                  textAlign: TextAlign.left,
+                  style: TextStyle(fontSize: 18, color: KiraColors.blue1, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 5),
+                Text(
+                  "0x" + transactionHash.toLowerCase(),
+                  textAlign: TextAlign.left,
+                  style: TextStyle(fontSize: 18, color: KiraColors.black),
+                ),
+                SizedBox(height: 32),
+                Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: <Widget>[cancelButton]),
+              ],
+            ));
+      },
+    );
+  }
+
+  Widget addWithdrawButton(BuildContext context, bool isBig) {
     String denomination = currentToken != null ? currentToken.denomination : "";
     return Stack(
       children: [
@@ -556,7 +692,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 amount: [StdCoin(denom: denomination, amount: withdrawalAmount.toString())]);
 
             final feeV = StdCoin(amount: feeAmount, denom: feeToken.denomination);
-            final fee = StdFee(gas: '200000', amount: [feeV]);
+            final fee = StdFee(gas: '999999', amount: [feeV]);
 
             // Structure and organize the transcation
             final stdTx = TransactionBuilder.buildStdTx([message], stdFee: fee, memo: memoController.text);
@@ -571,6 +707,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               setState(() {
                 transactionResult = Strings.invalidRequest;
                 transactionHash = "";
+                loading = false;
               });
             } else if (result['height'] == "0") {
               // print("Tx send error: " + result['check_tx']['log']);
@@ -578,6 +715,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 setState(() {
                   transactionResult = Strings.invalidRequest;
                   transactionHash = "";
+                  loading = false;
                 });
               }
             } else {
@@ -588,9 +726,12 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 amountController.text = "";
                 addressController.text = "";
                 memoController.text = "";
+                loading = false;
               });
               getNewTransaction("0x" + result['hash']);
             }
+
+            showTransactionStatus(context);
           },
         ),
         if (isQREnabled == true)
@@ -635,7 +776,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                             amount: [StdCoin(denom: denomination, amount: withdrawalAmount.toString())]);
 
                         final feeV = StdCoin(amount: feeAmount, denom: feeToken.denomination);
-                        final fee = StdFee(gas: '200000', amount: [feeV]);
+                        final fee = StdFee(gas: '999999', amount: [feeV]);
 
                         final stdTx = TransactionBuilder.buildStdTx([message], stdFee: fee, memo: memoController.text);
 
@@ -682,7 +823,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
                         //var base64Str = base64.decode(widget.qrData[i]);
                         //var bytes = utf8.decode(base64Str);
-                        print(data);
 
                         var signature = json.decode(data);
 
@@ -699,6 +839,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                           setState(() {
                             transactionResult = Strings.invalidRequest;
                             transactionHash = "";
+                            loading = false;
                           });
                         } else if (result['height'] == "0") {
                           // print("Tx send error: " + result['check_tx']['log']);
@@ -710,7 +851,6 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                           }
                         } else {
                           // print("Tx send successfully. Hash: 0x" + result['hash']);
-
                           setState(() {
                             transactionResult = Strings.transactionSuccess;
                             transactionHash = result['hash'];
@@ -720,6 +860,8 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                           });
                           getNewTransaction("0x" + result['hash']);
                         }
+
+                        showTransactionStatus(context);
                       },
                     )),
               )),
@@ -729,33 +871,36 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   Widget addLoadingIndicator() {
     return Container(
-        margin: EdgeInsets.only(bottom: 10, top: 10),
         alignment: Alignment.center,
         child: Container(
-          width: 40,
-          height: 40,
-          margin: EdgeInsets.symmetric(vertical: 0, horizontal: 30),
-          padding: EdgeInsets.all(0),
+          width: 20,
+          height: 20,
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
         ));
   }
 
-  Widget addWithdrawalTransactionsTable() {
+  Widget addTransactionsTable() {
     return Container(
         margin: EdgeInsets.only(bottom: 50),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              Strings.withdrawalTransactions,
-              textAlign: TextAlign.start,
-              style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
-            ),
-            SizedBox(height: 30),
-            WithdrawalTransactionsTable(transactions: transactions)
+            TransactionsTable(
+              page: page,
+              setPage: (newPage) => this.setState(() {
+                page = newPage;
+              }),
+              isDeposit: false,
+              transactions: transactions,
+              expandedHash: expandedHash,
+              onTapRow: (hash) => this.setState(() {
+                expandedHash = hash;
+              }),
+              controller: transactionsController,
+            )
           ],
         ));
   }
@@ -765,36 +910,37 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         margin: EdgeInsets.only(top: 50),
         child: Column(
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (transactionResult != '')
-                  Container(
-                    alignment: AlignmentDirectional(0, 0),
-                    margin: EdgeInsets.only(bottom: 10),
-                    child: Text(transactionResult,
-                        style: TextStyle(
-                          fontSize: 16.0,
-                          color: transactionResult.contains("success") ? KiraColors.green3 : KiraColors.kYellowColor,
-                          fontFamily: 'NunitoSans',
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ),
-                if (transactionHash != '')
-                  Container(
-                    alignment: AlignmentDirectional(0, 0),
-                    margin: EdgeInsets.only(bottom: 10),
-                    child: Text("0x" + transactionHash.toLowerCase(),
-                        style: TextStyle(
-                          fontSize: 15.0,
-                          color: transactionResult.contains("success") ? KiraColors.green3 : KiraColors.kYellowColor,
-                          fontFamily: 'NunitoSans',
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ),
-              ],
-            ),
+            // Column(
+            //   mainAxisAlignment: MainAxisAlignment.center,
+            //   crossAxisAlignment: CrossAxisAlignment.center,
+            //   children: [
+            //     if (transactionResult != '')
+            //       Container(
+            //         alignment: AlignmentDirectional(0, 0),
+            //         margin: EdgeInsets.only(bottom: 10),
+            //         child: Text(transactionResult,
+            //             style: TextStyle(
+            //               fontSize: 16.0,
+            //               color: transactionResult.contains("success") ? KiraColors.green3 : KiraColors.kYellowColor,
+            //               fontFamily: 'NunitoSans',
+            //               fontWeight: FontWeight.w600,
+            //             )),
+            //       ),
+            //     if (transactionHash != '')
+            //       Container(
+            //         alignment: AlignmentDirectional(0, 0),
+            //         margin: EdgeInsets.only(bottom: 10),
+            //         child: Text("0x" + transactionHash.toLowerCase(),
+            //             style: TextStyle(
+            //               fontSize: 15.0,
+            //               color: transactionResult.contains("success") ? KiraColors.green3 : KiraColors.kYellowColor,
+            //               fontFamily: 'NunitoSans',
+            //               fontWeight: FontWeight.w600,
+            //             )),
+            //       ),
+            //   ],
+            // ),
+            if (loading == true) addLoadingIndicator(),
           ],
         ));
   }
@@ -953,5 +1099,23 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             Expanded(child: addMemo(), flex: 1),
           ]),
     );
+  }
+
+  refreshTableSort() {
+    if (sortIndex == 0) {
+      transactions.sort((a, b) => isAscending ? a.hash.compareTo(b.hash) : b.hash.compareTo(a.hash));
+    } else if (sortIndex == 1) {
+      transactions.sort((a, b) => isAscending ? a.recipient.compareTo(b.recipient) : b.sender.compareTo(a.recipient));
+    } else if (sortIndex == 2) {
+      if (ResponsiveWidget.isSmallScreen(context))
+        transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+      else
+        transactions.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+    } else if (sortIndex == 3) {
+      transactions.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
+    } else {
+      transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+    }
+    transactionsController.add(null);
   }
 }

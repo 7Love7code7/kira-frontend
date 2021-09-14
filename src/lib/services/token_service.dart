@@ -1,24 +1,45 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:kira_auth/models/token.dart';
-import 'package:kira_auth/config.dart';
+import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class TokenService {
+  final _storageService = getIt<StorageService>();
+
+  Token feeToken;
+  String currentAddress;
   List<Token> tokens = [];
   List<String> faucetTokens = [];
 
+  void initialize() async {
+    Account currentAccount = await _storageService.getCurrentAccount();
+    currentAddress = currentAccount.hexAddress;
+
+    tokens = await _storageService.getTokenBalance(currentAddress);
+    faucetTokens = await _storageService.getFaucetTokens();
+    feeToken = await _storageService.getFeeToken();
+  }
+
+  void setFeeToken(Token fToken) async {
+    feeToken = fToken;
+    await _storageService.setFeeToken(fToken.toString());
+  }
+
   Future<void> getTokens(String address) async {
+    print("--- GET TOKEN BALANCE ---");
+    currentAddress = address;
     List<Token> tokenList = [];
 
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
     var tokenAliases =
-        await http.get(apiUrl[0] + "/kira/tokens/aliases", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+        await http.get(apiUrl[0] + "/api/kira/tokens/aliases", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var tokenAliasesData = json.decode(tokenAliases.body);
     // tokenAliasesData = tokenAliasesData['data'];
 
     var balance = await http
-        .get(apiUrl[0] + "/cosmos/bank/balances/$address", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+        .get(apiUrl[0] + "/api/cosmos/bank/balances/$address", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var balanceData = json.decode(balance.body);
     var coins = balanceData['balances'];
 
@@ -80,12 +101,13 @@ class TokenService {
     // }
 
     tokens = tokenList;
+    _storageService.setTokenBalance(address, jsonEncode(tokenList));
   }
 
   Future<String> faucet(String address, String token) async {
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
-    String url = apiUrl[0] + "/faucet?claim=$address&token=$token";
+    String url = apiUrl[0] + "/api/faucet?claim=$address&token=$token";
     String response = "Success!";
 
     var data = await http.get(url, headers: {'Access-Control-Allow-Origin': apiUrl[1]});
@@ -93,7 +115,6 @@ class TokenService {
     // var header = data.headers;
     // print(header['interx_signature']);
 
-    print(bodyData);
     if (bodyData['hash'] != null) {
       response = "Success!";
     }
@@ -128,9 +149,9 @@ class TokenService {
 
   Future<void> getAvailableFaucetTokens() async {
     List<String> tokenList = [];
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
-    var response = await http.get(apiUrl[0] + "/faucet", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var response = await http.get(apiUrl[0] + "/api/faucet", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
     var body = json.decode(response.body);
     var coins = body['balances'];
 
@@ -141,5 +162,6 @@ class TokenService {
     }
 
     faucetTokens = tokenList;
+    _storageService.setFaucetTokens(response.body);
   }
 }

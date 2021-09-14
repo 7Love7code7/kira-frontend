@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kira_auth/models/export.dart';
-import 'package:kira_auth/utils/cache.dart';
-import 'package:kira_auth/widgets/header_wrapper.dart';
+import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/service_manager.dart';
+import 'package:kira_auth/config.dart';
 
 class GlobalScreen extends StatefulWidget {
   @override
@@ -15,15 +17,28 @@ class GlobalScreen extends StatefulWidget {
 }
 
 class _GlobalScreenState extends State<GlobalScreen> {
-  String accountId;
+  final _statusService = getIt<StatusService>();
+  final _storageService = getIt<StorageService>();
+  final _tokenService = getIt<TokenService>();
+  final _transactionService = getIt<TransactionService>();
+  final _accountService = getIt<AccountService>();
+
+  Timer timer;
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
 
-    getFeeTokenFromCache();
-    getCurrentAccountFromCache();
+    fetchData(true);
+    timer = Timer.periodic(Duration(minutes: 2), (Timer t) => {fetchData(false)});
 
-    checkPasswordExpired().then((success) {
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       } else {
@@ -32,35 +47,39 @@ class _GlobalScreenState extends State<GlobalScreen> {
     });
   }
 
-  void getCurrentAccountFromCache() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+  void fetchData(bool isFirst) async {
+    Account currentAccount = await _storageService.getCurrentAccount();
 
-    String currentAccountString = prefs.getString('currentAccount');
-    Account currentAccount;
+    if (isFirst) {
+      _statusService.initialize();
+      _tokenService.initialize();
+      _transactionService.initialize();
+      _accountService.initialize();
 
-    if (currentAccountString != null && currentAccountString != "") {
-      currentAccount = Account.fromString(currentAccountString);
+      currentAccount = _accountService.currentAccount;
+      if (currentAccount != null) {
+        BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
+      }
     }
 
-    if (BlocProvider.of<AccountBloc>(context).state.currentAccount == null && currentAccount != null) {
-      BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-      BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
-    }
-  }
+    await _statusService.getNodeStatus();
+    BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(_statusService.nodeInfo.network, _statusService.rpcUrl));
 
-  void getFeeTokenFromCache() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> rpcUrl = await _storageService.getLiveRpcUrl();
 
-    String feeTokenString = prefs.getString('feeToken');
-    Token feeToken;
-
-    if (feeTokenString != null && feeTokenString != "") {
-      feeToken = Token.fromString(feeTokenString);
+    if (rpcUrl[0].isEmpty) {
+      bool isLoggedIn = await _storageService.getLoginStatus();
+      if (!isLoggedIn) return;
+      await loadInterxURL();
     }
 
-    if (BlocProvider.of<TokenBloc>(context).state.feeToken == null && feeToken != null) {
-      BlocProvider.of<TokenBloc>(context).add(SetFeeToken(feeToken));
+    await _tokenService.getAvailableFaucetTokens();
+    if (currentAccount != null) {
+      await _tokenService.getTokens(currentAccount.bech32Address);
+      await _transactionService.getTransactions(currentAccount.bech32Address);
     }
+
+    print("--- SOS --- ${rpcUrl[0]}");
   }
 
   @override

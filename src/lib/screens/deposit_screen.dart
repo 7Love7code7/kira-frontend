@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipboard/clipboard.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,9 +7,9 @@ import 'package:jdenticon/jdenticon.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class DepositScreen extends StatefulWidget {
   @override
@@ -18,9 +17,9 @@ class DepositScreen extends StatefulWidget {
 }
 
 class _DepositScreenState extends State<DepositScreen> {
-  StatusService statusService = StatusService();
-  GravatarService gravatarService = GravatarService();
-  TransactionService transactionService = TransactionService();
+  final _storageService = getIt<StorageService>();
+  final _transactionService = getIt<TransactionService>();
+  final _accountService = getIt<AccountService>();
 
   Account currentAccount;
   Timer timer;
@@ -28,9 +27,15 @@ class _DepositScreenState extends State<DepositScreen> {
   List<String> networkIds = [Strings.noAvailableNetworks];
   List<Transaction> transactions = [];
   bool copied1, copied2, isNetworkHealthy = false;
+  bool initialFetched = false;
+  String expandedHash;
 
   FocusNode depositNode;
   TextEditingController depositController;
+  int page = 1;
+  StreamController transactionsController = StreamController.broadcast();
+  int sortIndex = 0;
+  bool isAscending = true;
 
   @override
   void initState() {
@@ -40,22 +45,15 @@ class _DepositScreenState extends State<DepositScreen> {
     this.depositController = TextEditingController();
     this.copied1 = false;
     this.copied2 = false;
-    getNodeStatus();
 
-    if (mounted) {
-      setState(() {
-        if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-          currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-          this.depositController.text = currentAccount != null ? currentAccount.bech32Address : '';
-        }
-      });
-    }
+    getNodeStatus();
     getDepositTransactions();
   }
 
   @override
   void dispose() {
     depositController.dispose();
+    transactionsController.close();
     super.dispose();
   }
 
@@ -64,17 +62,22 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
           networkIds.clear();
-          networkIds.add(statusService.nodeInfo.network);
-          networkId = statusService.nodeInfo.network;
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
+          networkIds.add(nodeInfo.network);
+          networkId = nodeInfo.network;
+          isNetworkHealthy = networkHealth;
         } else {
           isNetworkHealthy = false;
         }
@@ -82,24 +85,43 @@ class _DepositScreenState extends State<DepositScreen> {
     }
   }
 
-  void getDepositTransactions() async {
-    if (currentAccount != null) {
-      List<Transaction> wTxs =
-      await transactionService.getTransactions(account: currentAccount, max: 100, isWithdrawal: false);
+  getDepositTransactions() async {
+    Account curAccount;
+    curAccount = _accountService.currentAccount;
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (mounted) {
+      setState(() {
+        currentAccount = curAccount;
+        depositController.text = curAccount != null ? curAccount.bech32Address : '';
+      });
+    }
+
+    if (curAccount != null) {
+      List<Transaction> _transactions = _transactionService.transactions;
+
+      if (_transactions.length == 0) {
+        _transactions = await _storageService.getTransactions(curAccount.bech32Address);
+      }
+
+      if (_transactions.length == 0) {
+        bool result = await _transactionService.getTransactions(curAccount.bech32Address);
+        if (!result)
+          setState(() {
+            initialFetched = false;
+          });
+        _transactions = _transactionService.transactions;
+      }
 
       if (mounted) {
         setState(() {
-          transactions = wTxs;
+          transactions = _transactions.where((element) => element.action == "Deposit").toList();
+          initialFetched = true;
         });
       }
     }
-  }
-
-  void getNewTransaction(hash) async {
-    Transaction tx = await transactionService.getTransaction(hash: hash);
-    setState(() {
-      transactions.add(tx);
-    });
   }
 
   void autoPress() {
@@ -113,35 +135,55 @@ class _DepositScreenState extends State<DepositScreen> {
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
+    final _storageService = getIt<StorageService>();
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       }
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1000),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            if (currentAccount != null) addGravatar(context),
-                            ResponsiveWidget.isSmallScreen(context) ? addInformationSmall() : addInformationBig(),
-                            addDepositTransactionsTable(),
-                          ],
-                        ),
-                      )));
-            }));
+        body: HeaderWrapper(
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1000),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    addHeaderTitle(),
+                    if (currentAccount != null) addGravatar(context),
+                    ResponsiveWidget.isSmallScreen(context) ? addInformationSmall() : addInformationBig(),
+                    addTableHeader(),
+                    !initialFetched
+                        ? addLoadingIndicator()
+                        : transactions.isEmpty
+                            ? Container(
+                                margin: EdgeInsets.only(top: 20, left: 20),
+                                child: Text("No deposit transactions to show",
+                                    style: TextStyle(
+                                        color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+                            : addTransactionsTable(),
+                  ],
+                ),
+              ))));
+  }
+
+  Widget addLoadingIndicator() {
+    return Container(
+        alignment: Alignment.center,
+        child: Container(
+          width: 20,
+          height: 20,
+          margin: EdgeInsets.symmetric(vertical: 0, horizontal: 30),
+          padding: EdgeInsets.all(0),
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
+        ));
   }
 
   Widget addHeaderTitle() {
@@ -153,6 +195,57 @@ class _DepositScreenState extends State<DepositScreen> {
           style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
         ));
   }
+
+  Widget addTableHeader() {
+    List<String> titles = ResponsiveWidget.isSmallScreen(context) ? ['Tx Hash', 'Sender', 'Status']
+        : ['Tx Hash', 'Sender', 'Amount', 'Time', 'Status'];
+    List<int> flexes = [2, 2, 1, 1, 1];
+
+    return Container(
+    padding: EdgeInsets.all(5),
+    margin: EdgeInsets.only(top: 30, right: 40, bottom: 20),
+    child: Row(
+    children: titles
+        .asMap()
+        .map(
+    (index, title) => MapEntry(
+    index,
+    Expanded(
+    flex: flexes[index],
+    child: InkWell(
+    onTap: () => this.setState(() {
+    if (sortIndex == index)
+    isAscending = !isAscending;
+    else {
+    sortIndex = index;
+    isAscending = true;
+    }
+    expandedHash = '';
+    refreshTableSort();
+    }),
+    child: Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: sortIndex != index
+    ? [
+    Text(title,
+    style: TextStyle(
+    color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+    ]
+        : [
+    Text(title,
+    style: TextStyle(
+    color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+    SizedBox(width: 5),
+    Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+    color: KiraColors.white),
+    ],
+    )))),
+    )
+        .values
+        .toList(),
+    ),
+    );
+    }
 
   Widget availableNetworks() {
     return Container(
@@ -283,10 +376,8 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   Widget addGravatar(BuildContext context) {
-    // final String gravatar = gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
-
     final String reducedAddress =
-    currentAccount.bech32Address.replaceRange(10, currentAccount.bech32Address.length - 7, '....');
+        currentAccount.bech32Address.replaceRange(10, currentAccount.bech32Address.length - 7, '....');
 
     return Container(
         margin: EdgeInsets.only(bottom: 30),
@@ -297,11 +388,11 @@ class _DepositScreenState extends State<DepositScreen> {
             InkWell(
               onTap: () {
                 FlutterClipboard.copy(currentAccount.bech32Address).then((value) => {
-                  setState(() {
-                    copied1 = !copied1;
-                  }),
-                  if (copied1 == true) {autoPress()}
-                });
+                      setState(() {
+                        copied1 = !copied1;
+                      }),
+                      if (copied1 == true) {autoPress()}
+                    });
               },
               borderRadius: BorderRadius.circular(500),
               onHighlightChanged: (value) {},
@@ -352,21 +443,45 @@ class _DepositScreenState extends State<DepositScreen> {
         ));
   }
 
-  Widget addDepositTransactionsTable() {
+  Widget addTransactionsTable() {
     return Container(
         margin: EdgeInsets.only(bottom: 50),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              Strings.depositTransactions,
-              textAlign: TextAlign.start,
-              style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
-            ),
-            SizedBox(height: 20),
-            DepositTransactionsTable(transactions: transactions)
+            TransactionsTable(
+              page: page,
+              setPage: (newPage) => this.setState(() {
+                page = newPage;
+              }),
+              isDeposit: true,
+              transactions: transactions,
+              expandedHash: expandedHash,
+              onTapRow: (hash) => this.setState(() {
+                expandedHash = hash;
+              }),
+              controller: transactionsController,
+            )
           ],
         ));
+  }
+
+  refreshTableSort() {
+    if (sortIndex == 0) {
+      transactions.sort((a, b) => isAscending ? a.hash.compareTo(b.hash) : b.hash.compareTo(a.hash));
+    } else if (sortIndex == 1) {
+      transactions.sort((a, b) => isAscending ? a.sender.compareTo(b.sender) : b.sender.compareTo(a.sender));
+    } else if (sortIndex == 2) {
+      if (ResponsiveWidget.isSmallScreen(context))
+        transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+      else
+        transactions.sort((a, b) => isAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+    } else if (sortIndex == 3) {
+      transactions.sort((a, b) => isAscending ? a.time.compareTo(b.time) : b.time.compareTo(a.time));
+    } else {
+      transactions.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+    }
+    transactionsController.add(null);
   }
 }

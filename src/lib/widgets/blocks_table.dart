@@ -13,7 +13,10 @@ class BlocksTable extends StatefulWidget {
   final List<BlockTransaction> transactions;
   final int expandedHeight;
   final Function onTapRow;
+  final int page;
   final int totalPages;
+  final Function loadMore;
+  final Function setPage;
   final StreamController controller;
 
   BlocksTable({
@@ -24,6 +27,9 @@ class BlocksTable extends StatefulWidget {
     this.expandedHeight,
     this.onTapRow,
     this.controller,
+    this.loadMore,
+    this.page,
+    this.setPage,
   }) : super();
 
   @override
@@ -31,11 +37,9 @@ class BlocksTable extends StatefulWidget {
 }
 
 class _BlocksTableState extends State<BlocksTable> {
-  List<ExpandableController> controllers = List.filled(5, null);
-  int page = 1;
+  List<ExpandableController> controllers = List.filled(PAGE_COUNT, null);
   int startAt;
   int endAt;
-  int pageCount = 5;
   List<Block> currentBlocks = <Block>[];
 
   @override
@@ -48,12 +52,18 @@ class _BlocksTableState extends State<BlocksTable> {
 
   setPage({int newPage = 0}) {
     if (!mounted) return;
+    if (newPage > 0)
+      widget.setPage(newPage);
+    var page = newPage == 0 ? widget.page : newPage;
     this.setState(() {
-      page = newPage == 0 ? page : newPage;
-      startAt = page * 5 - 5;
-      endAt = startAt + pageCount;
+      startAt = page * PAGE_COUNT - PAGE_COUNT;
+      endAt = startAt + PAGE_COUNT;
 
-      currentBlocks = widget.blocks.sublist(startAt, min(endAt, widget.blocks.length));
+      currentBlocks = [];
+      if (widget.blocks.length > startAt)
+        currentBlocks = widget.blocks.sublist(startAt, min(endAt, widget.blocks.length));
+      if (currentBlocks.length < PAGE_COUNT && (widget.blocks.length / PAGE_COUNT).ceil() < widget.totalPages)
+        widget.loadMore();
     });
     if (newPage > 0)
       refreshExpandStatus();
@@ -99,25 +109,27 @@ class _BlocksTableState extends State<BlocksTable> {
   }
 
   Widget addNavigateControls() {
+    var totalPages = widget.totalPages;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         IconButton(
-          onPressed: page > 1 ? () => setPage(newPage: page - 1) : null,
+          onPressed: widget.page > 1 ? () => setPage(newPage: widget.page - 1) : null,
           icon: Icon(
             Icons.arrow_back_ios,
             size: 20,
-            color: page > 1 ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2),
+            color: widget.page > 1 ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2),
           ),
         ),
-        Text("$page / ${widget.totalPages}", style: TextStyle(fontSize: 16, color: KiraColors.white, fontWeight: FontWeight.bold)),
+        Text("${min(widget.page, totalPages)} / $totalPages", style: TextStyle(fontSize: 16, color: KiraColors.white, fontWeight: FontWeight.bold)),
         IconButton(
-          onPressed: page < widget.totalPages ? () => setPage(newPage: page + 1) : null,
+          onPressed: widget.page < totalPages ? () => setPage(newPage: widget.page + 1) : null,
           icon: Icon(
               Icons.arrow_forward_ios,
               size: 20,
-              color: page < widget.totalPages ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2)
+              color: widget.page < totalPages ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2)
           ),
         ),
       ],
@@ -145,7 +157,7 @@ class _BlocksTableState extends State<BlocksTable> {
                 refreshExpandStatus(newExpandHeight: newExpandHeight);
               },
               child: Container(
-                padding: EdgeInsets.only(top: 20, bottom: 20, left: 20),
+                padding: EdgeInsets.only(top: 10, bottom: 10, left: 20),
                 child: Row(
                   children: [
                     Expanded(
@@ -168,9 +180,10 @@ class _BlocksTableState extends State<BlocksTable> {
                               ),
                               child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Container())),
                           SizedBox(width: 5),
-                          Text(block.getProposer,
+                          Flexible(child: Text(block.getProposer,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16))
+                              style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16)))
                         ])),
                     SizedBox(width: 10),
                     Expanded(
@@ -208,14 +221,14 @@ class _BlocksTableState extends State<BlocksTable> {
         child: Text("No transactions in this block",
             style: TextStyle(color: KiraColors.white, fontSize: 16, fontWeight: FontWeight.bold)))
         : Container(
-        margin: EdgeInsets.only(left: ResponsiveWidget.isSmallScreen(context) ? 30 : 100),
+        margin: EdgeInsets.only(left: ResponsiveWidget.isSmallScreen(context) ? 20 : 30),
         padding: EdgeInsets.all(10),
         child: Column(children: [
           Container(
               margin: EdgeInsets.only(bottom: 20),
               child: Row(children: [
                 Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: Text("Tx Hash",
                         style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold))),
                 SizedBox(width: 10),
@@ -245,7 +258,7 @@ class _BlocksTableState extends State<BlocksTable> {
           ...widget.transactions
               .map((transaction) => Row(children: [
             Expanded(
-                flex: 1,
+                flex: 2,
                 child: Align(
                     alignment: Alignment.centerLeft,
                     child: InkWell(
@@ -255,6 +268,7 @@ class _BlocksTableState extends State<BlocksTable> {
                         },
                         child: Text(transaction.getReducedHash,
                             overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
                             style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16))))),
             SizedBox(width: 10),
             Expanded(

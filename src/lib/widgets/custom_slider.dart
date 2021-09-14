@@ -1411,7 +1411,7 @@ class _RenderSlider extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
       _sliderTheme.overlayShape.paint(
         context,
         thumbCenter,
-        // sizeWithOverflow: ,
+        sizeWithOverflow: Size(20, 20),
         textScaleFactor: textScaleFactor,
         activationAnimation: _overlayAnimation,
         enableAnimation: _enableAnimation,

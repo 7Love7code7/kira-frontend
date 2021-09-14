@@ -2,6 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:kira_auth/utils/colors.dart';
 
+const int PAGE_COUNT = 10;
+
 void showToast(String message) {
   Fluttertoast.showToast(
     msg: message,

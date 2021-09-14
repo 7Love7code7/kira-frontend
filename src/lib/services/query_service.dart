@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:kira_auth/models/account.dart';
 import 'package:kira_auth/models/cosmos_account.dart';
-import 'package:kira_auth/config.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class QueryService {
   static Future<CosmosAccount> getAccountData(Account account) async {
-    var apiUrl = await loadInterxURL();
+    final _storageService = getIt<StorageService>();
+    var apiUrl = await _storageService.getLiveRpcUrl();
 
-    print(account.bech32Address);
-
-    final endpoint = apiUrl[0] + "/cosmos/auth/accounts/${account.bech32Address}";
+    final endpoint = apiUrl[0] + "/api/cosmos/auth/accounts/${account.bech32Address}";
     var response = await http.get(endpoint, headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     if (response.statusCode != 200) {

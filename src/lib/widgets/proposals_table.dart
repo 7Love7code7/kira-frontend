@@ -18,7 +18,10 @@ class ProposalsTable extends StatefulWidget {
   final String expandedId;
   final Function onTapRow;
   final Function onTapVote;
+  final Function loadMore;
   final StreamController controller;
+  final Function setPage;
+  final int page;
   final int totalPages;
   final bool isFiltering;
 
@@ -32,6 +35,9 @@ class ProposalsTable extends StatefulWidget {
     this.controller,
     this.totalPages,
     this.isFiltering,
+    this.loadMore,
+    this.page,
+    this.setPage,
   }) : super();
 
   @override
@@ -40,29 +46,40 @@ class ProposalsTable extends StatefulWidget {
 
 class _ProposalsTableState extends State<ProposalsTable> {
   int voteOption;
-  List<ExpandableController> controllers = List.filled(5, null);
-  int page = 1;
+  List<ExpandableController> controllers = List.filled(PAGE_COUNT, null);
   int startAt;
   int endAt;
-  int pageCount = 5;
   List<Proposal> currentProposals = <Proposal>[];
+  String query;
 
   @override
   void initState() {
     super.initState();
 
-    setPage();
-    widget.controller.stream.listen((_) => setPage());
+    setPage("", first: true);
+    widget.controller.stream.listen((newQuery) => setPage(newQuery));
   }
 
-  setPage({int newPage = 0}) {
+  setPage(String newQuery, {int newPage = 0, bool first = false}) {
+    if (newQuery != null)
+      query = newQuery;
     if (!mounted) return;
+    if (newPage > 0)
+      widget.setPage(newPage);
+    else if (newQuery != null && !first)
+      widget.setPage(1);
+    var page = newPage > 0 ? newPage : newQuery != null ? 1 : widget.page;
     this.setState(() {
-      page = newPage == 0 ? page : newPage;
-      startAt = page * 5 - 5;
-      endAt = startAt + pageCount;
+      startAt = page * PAGE_COUNT - PAGE_COUNT;
+      endAt = startAt + PAGE_COUNT;
 
-      currentProposals = widget.proposals.sublist(startAt, min(endAt, widget.proposals.length));
+      currentProposals = [];
+      var proposals = query.isEmpty ? widget.proposals : widget.proposals.where((x) => x.proposalId == query ||
+          x.content.getName().toLowerCase().contains(query) || x.getStatusString().toLowerCase().contains(query)).toList();
+      if (proposals.length > startAt)
+        currentProposals = proposals.sublist(startAt, min(endAt, proposals.length));
+      if (currentProposals.length < PAGE_COUNT && (proposals.length / PAGE_COUNT).ceil() < widget.totalPages)
+        widget.loadMore();
     });
     if (newPage > 0)
       refreshExpandStatus();
@@ -108,27 +125,29 @@ class _ProposalsTableState extends State<ProposalsTable> {
   }
 
   Widget addNavigateControls() {
-    var totalPages = widget.isFiltering ? (widget.proposals.length / 5).ceil() : widget.totalPages;
+    var proposals = query.isEmpty ? widget.proposals : widget.proposals.where((x) => x.proposalId == query ||
+        x.content.getName().toLowerCase().contains(query) || x.getStatusString().toLowerCase().contains(query)).toList();
+    var totalPages = widget.isFiltering ? (proposals.length / PAGE_COUNT).ceil() : widget.totalPages;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         IconButton(
-          onPressed: page > 1 ? () => setPage(newPage: page - 1) : null,
+          onPressed: widget.page > 1 ? () => setPage(null, newPage: widget.page - 1) : null,
           icon: Icon(
             Icons.arrow_back_ios,
             size: 20,
-            color: page > 1 ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2),
+            color: widget.page > 1 ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2),
           ),
         ),
-        Text("$page / $totalPages", style: TextStyle(fontSize: 16, color: KiraColors.white, fontWeight: FontWeight.bold)),
+        Text("${min(widget.page, totalPages)} / $totalPages", style: TextStyle(fontSize: 16, color: KiraColors.white, fontWeight: FontWeight.bold)),
         IconButton(
-          onPressed: page < totalPages ? () => setPage(newPage: page + 1) : null,
+          onPressed: widget.page < totalPages ? () => setPage(null, newPage: widget.page + 1) : null,
           icon: Icon(
               Icons.arrow_forward_ios,
               size: 20,
-              color: page < totalPages ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2)
+              color: widget.page < totalPages ? KiraColors.white : KiraColors.kGrayColor.withOpacity(0.2)
           ),
         ),
       ],
@@ -156,7 +175,7 @@ class _ProposalsTableState extends State<ProposalsTable> {
                 refreshExpandStatus(newExpandId: newExpandId);
               },
               child: Container(
-                  padding: EdgeInsets.only(top: 20, bottom: 20),
+                  padding: EdgeInsets.symmetric(vertical: 10),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -209,7 +228,7 @@ class _ProposalsTableState extends State<ProposalsTable> {
   }
 
   Widget addRowBody(Proposal proposal) {
-    final fieldWidth = ResponsiveWidget.isSmallScreen(context) ? 100.0 : 150.0;
+    final fieldWidth = ResponsiveWidget.isSmallScreen(context) ? 80.0 : 150.0;
     final voteOptions = proposal.availableVoteOptions().map((e) => VoteOption.values.indexOf(e)).toList();
     var allColors = [KiraColors.kGrayColor, KiraColors.green3, KiraColors.orange1, KiraColors.danger, KiraColors.danger];
     var colorList = allColors.where((element) {

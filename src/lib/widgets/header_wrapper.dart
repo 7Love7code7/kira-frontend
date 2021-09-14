@@ -1,14 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-// import 'package:dynamic_theme/dynamic_theme.dart';
-import 'package:kira_auth/widgets/web_scrollbar.dart';
-import 'package:kira_auth/widgets/hamburger_drawer.dart';
-import 'package:kira_auth/widgets/top_bar_contents.dart';
-import 'package:kira_auth/utils/responsive.dart';
-import 'package:kira_auth/utils/strings.dart';
-import 'package:kira_auth/utils/colors.dart';
-import 'package:kira_auth/services/status_service.dart';
-import 'package:kira_auth/utils/cache.dart';
+import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class HeaderWrapper extends StatefulWidget {
   final Widget childWidget;
@@ -20,7 +15,7 @@ class HeaderWrapper extends StatefulWidget {
 }
 
 class _HeaderWrapperState extends State<HeaderWrapper> {
-  StatusService statusService = StatusService();
+  final _storageService = getIt<StorageService>();
   ScrollController _scrollController = ScrollController();
   double _scrollPosition = 0;
   double _opacity = 0;
@@ -33,41 +28,37 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
       _scrollPosition = _scrollController.position.pixels;
     });
   }
+
   Future<bool> isUserLoggedIn() async {
-    bool isLoggedIn = await getLoginStatus();
+    bool isLoggedIn = await _storageService.getLoginStatus();
 
     return isLoggedIn;
-
   }
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
 
-    getTopBarStatus().then((display) {
+    _storageService.getTopBarStatus().then((displayResult) {
       setState(() {
-        this.display = display;
-        print(display);
+        display = displayResult;
       });
-
     });
 
     isUserLoggedIn().then((isLoggedIn) {
-
       if (isLoggedIn) {
-        checkPasswordExists().then((success) {
+        _storageService.checkPasswordExists().then((success) {
           setState(() {
             _loggedIn = success;
           });
         });
       } else {
         setState(() {
-        _loggedIn = false;
+          _loggedIn = false;
         });
       }
-
     });
-
   }
 
   Widget topBarSmall(BuildContext context) {
@@ -177,7 +168,7 @@ class _HeaderWrapperState extends State<HeaderWrapper> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).backgroundColor,
-      drawer: HamburgerDrawer(isNetworkHealthy: widget.isNetworkHealthy),
+      drawer: HamburgerDrawer(),
       body: WebScrollbar(
         color: KiraColors.kYellowColor,
         backgroundColor: Colors.purple.withOpacity(0.3),

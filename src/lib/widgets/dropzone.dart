@@ -144,15 +144,18 @@ class _DropzoneWidgetState extends State<DropzoneWidget> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            Strings.dropFile,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontFamily: 'RobotoMono',
-                              fontSize: boxConstraints.maxWidth / 25,
-                              color: isHover ? KiraColors.kYellowColor : KiraColors.white,
-                            ),
+                          Padding(
+                            padding: EdgeInsets.all(10),
+                            child:Text(
+                              Strings.dropFile,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 18,
+                                color: isHover ? KiraColors.kYellowColor : KiraColors.white,
+                              )),
                           ),
                           SizedBox(height: 20),
                           if (keyFile != null)

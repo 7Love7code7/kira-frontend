@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:intl/intl.dart';
@@ -16,6 +17,7 @@ class BlockTransaction {
   final int confirmation;
   final int gasWanted;
   final int gasUsed;
+  final String jsonString;
   List<TxSend> transactions;
   List<TxMsg> messages;
   List<StdCoin> fees;
@@ -33,7 +35,8 @@ class BlockTransaction {
         this.timestamp = 0,
         this.transactions,
         this.messages,
-        this.fees}) {
+        this.fees,
+        this.jsonString = ""}) {
     assert(this.hash != null ||
         this.status != null ||
         this.timestamp != null ||
@@ -84,6 +87,7 @@ class BlockTransaction {
       transactions: (data['transactions'] as List<dynamic>).map((e) => TxSend.fromJson(e)).toList(),
       messages: (data['msgs'] as List<dynamic>).map((e) => TxMsg.fromJson(e)).toList(),
       fees: (data['fees'] as List<dynamic>).map((e) => StdCoin.fromJson(e)).toList(),
+      jsonString: jsonEncode(data)
     );
   }
 }

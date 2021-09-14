@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'dart:convert';
+import 'dart:math';
 
 part 'token.g.dart';
 
@@ -42,12 +43,12 @@ class Token {
   }
 
   factory Token.fromJson(Map<String, dynamic> json) => _$TokenFromJson(json);
-
   factory Token.fromString(String data) {
     Map accMap = json.decode(data);
     return Token.fromJson(accMap);
   }
-  Map<String, dynamic> toJson() => _$TokenToJson(this);
 
+  Map<String, dynamic> toJson() => _$TokenToJson(this);
   String toString() => jsonEncode(toJson());
+  double get getTokenBalanceInTicker => balance / pow(10, decimals);
 }

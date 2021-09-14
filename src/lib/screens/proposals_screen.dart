@@ -1,18 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:kira_auth/helpers/export.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:kira_auth/helpers/export.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class ProposalsScreen extends StatefulWidget {
   @override
@@ -20,82 +21,85 @@ class ProposalsScreen extends StatefulWidget {
 }
 
 class _ProposalsScreenState extends State<ProposalsScreen> {
-  ProposalService proposalService = ProposalService();
-  StatusService statusService = StatusService();
+  final _proposalService = getIt<ProposalService>();
+
   List<Proposal> proposals = [];
-  List<Proposal> filteredProposals = [];
   List<int> voteable = [0, 2];
-  Timer timer;
   String pendingTxHash;
   String cancelAccountNumber;
   String cancelSequence;
+  bool isFiltering = false;
   String query = "";
-  bool initialFetched = false;
+  bool moreLoading = false;
 
   Account currentAccount;
   String feeAmount;
   Token feeToken;
   String expandedId;
   bool isNetworkHealthy = false;
+  int page = 1;
   StreamController proposalController = StreamController.broadcast();
 
   @override
   void initState() {
     super.initState();
 
+    // setTopBarStatus(true);
     getNodeStatus();
-    if (mounted) {
-      if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-        currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-      }
-      if (BlocProvider.of<TokenBloc>(context).state.feeToken != null) {
-        feeToken = BlocProvider.of<TokenBloc>(context).state.feeToken;
-      }
-      getCachedFeeAmount();
-      if (feeToken == null) {
-        getFeeToken();
-      }
-    }
-
+    getCachedFeeAmount();
+    getFeeToken();
+    getCurrentAccount();
     getProposals(false);
-    timer = Timer.periodic(Duration(seconds: 10), (timer) {
-      getProposals(true);
-    });
   }
 
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
+  getCurrentAccount() async {
+    final _accountService = getIt<AccountService>();
+    final _storageService = getIt<StorageService>();
+    Account curAccount = _accountService.currentAccount;
+
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (mounted) {
+      setState(() {
+        currentAccount = curAccount;
+      });
+    }
   }
 
   void getProposals(bool loadNew) async {
-    await proposalService.getProposals(loadNew, account: currentAccount != null ? currentAccount.bech32Address : '');
-    if (proposalService.totalCount > proposalService.proposals.length)
-      getProposals(false);
     setState(() {
-      initialFetched = true;
+      moreLoading = !loadNew;
+    });
+    await _proposalService.getProposals(loadNew, account: currentAccount != null ? currentAccount.bech32Address : '');
+    setState(() {
+      moreLoading = false;
       proposals.clear();
-      proposals.addAll(proposalService.proposals);
-      filteredProposals.clear();
-      filteredProposals.addAll(query.isEmpty ? proposals : proposals.where((x) => x.proposalId.contains(query) ||
-          x.content.getName().toLowerCase().contains(query) || x.getStatusString().toLowerCase().contains(query)));
-      proposalController.add(null);
+      proposals.addAll(_proposalService.proposals);
+
+      var uri = Uri.dataFromString(html.window.location.href);
+      Map<String, String> params = uri.queryParameters;
+      var keyword = query;
+      if (params.containsKey("info")) keyword = params['info'].toLowerCase();
+
+      proposalController.add(keyword);
     });
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
       });
     }
   }
@@ -103,7 +107,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   void getCachedFeeAmount() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      int cfeeAmount = prefs.getInt('feeAmount');
+      int cfeeAmount = prefs.getInt('FEE_AMOUNT');
       if (cfeeAmount.runtimeType != Null)
         feeAmount = cfeeAmount.toString();
       else
@@ -112,52 +116,50 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   }
 
   void getFeeToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      String feeTokenString = prefs.getString('feeToken');
-      if (feeTokenString.runtimeType != Null) {
-        feeToken = Token.fromString(feeTokenString);
-      } else {
-        feeToken = Token(assetName: "Kira", ticker: 'KEX', denomination: "ukex", decimals: 6);
-      }
-    });
+    final _storageService = getIt<StorageService>();
+    final _tokenService = getIt<TokenService>();
+    Token fToken = _tokenService.feeToken;
+
+    if (fToken == null) {
+      fToken = await _storageService.getFeeToken();
+    }
+
+    if (mounted) {
+      setState(() {
+        feeToken = fToken;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
-      if (success) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    });
-
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1200),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeader(),
-                            addTableHeader(),
-                            !initialFetched ? addLoadingIndicator() : filteredProposals.isEmpty ? Container(
+        body: HeaderWrapper(
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1200),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    addHeaderTitle(),
+                    isFiltering ? addSearchInput() : Container(),
+                    addTableHeader(),
+                    moreLoading
+                        ? addLoadingIndicator()
+                        : proposals.isEmpty
+                            ? Container(
                                 margin: EdgeInsets.only(top: 20, left: 20),
                                 child: Text("No proposals to show",
                                     style: TextStyle(
                                         color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                : addProposalsTable(),
-                          ],
-                        ),
-                      )));
-            }));
+                            : addProposalsTable(),
+                  ],
+                ),
+              ))));
   }
 
   Widget addLoadingIndicator() {
@@ -174,38 +176,61 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
         ));
   }
 
-  Widget addHeader() {
-    return Container(
-      margin: EdgeInsets.only(bottom: 40),
-      child: ResponsiveWidget.isLargeScreen(context)
-          ? Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          addHeaderTitle(),
-          addSearchInput(),
-        ],
-      )
-          : Column(
-        children: <Widget>[
-          addHeaderTitle(),
-          addSearchInput(),
-        ],
-      ),
-    );
-  }
-
   Widget addHeaderTitle() {
     return Container(
-        margin: EdgeInsets.only(bottom: 50),
-        child: Text(
-          Strings.proposals,
-          textAlign: TextAlign.left,
-          style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
-        ));
+        margin: EdgeInsets.only(bottom: 20),
+        child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                Strings.proposals,
+                textAlign: TextAlign.left,
+                style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+              ),
+              Container(
+                margin: EdgeInsets.only(right: 20),
+                child: isFiltering
+                    ? InkWell(
+                    onTap: () {
+                      this.setState(() {
+                        isFiltering = false;
+                        expandedId = "";
+                      });
+                    },
+                    child: Icon(Icons.close, color: KiraColors.white, size: 30))
+                    : Tooltip(
+                  message: Strings.proposalQuery,
+                  waitDuration: Duration(milliseconds: 500),
+                  decoration: BoxDecoration(color: KiraColors.purple1, borderRadius: BorderRadius.circular(4)),
+                  verticalOffset: 20,
+                  preferBelow: ResponsiveWidget.isSmallScreen(context),
+                  margin: EdgeInsets.only(
+                      right: ResponsiveWidget.isSmallScreen(context)
+                          ? 20
+                          : ResponsiveWidget.isMediumScreen(context)
+                          ? 50
+                          : 110),
+                  textStyle: TextStyle(color: KiraColors.white.withOpacity(0.8)),
+                  child: InkWell(
+                    onTap: () {
+                      this.setState(() {
+                        isFiltering = true;
+                        expandedId = "";
+                      });
+                    },
+                    child: Icon(Icons.search, color: KiraColors.white, size: 30),
+                  ),
+                ),
+              ),
+            ],
+        ),
+    );
   }
 
   Widget addSearchInput() {
     return Container(
+      margin: EdgeInsets.symmetric(vertical: 10),
       width: 500,
       child: AppTextField(
         hintText: Strings.proposalQuery,
@@ -219,10 +244,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
           this.setState(() {
             query = newText.toLowerCase();
             expandedId = "";
-            filteredProposals.clear();
-            filteredProposals.addAll(query.isEmpty ? proposals : proposals.where((x) => x.proposalId.contains(query) ||
-                x.content.getName().toLowerCase().contains(query) || x.getStatusString().toLowerCase().contains(query)));
-            proposalController.add(null);
+            proposalController.add(query);
           });
         },
         padding: EdgeInsets.only(bottom: 15),
@@ -240,7 +262,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   Widget addTableHeader() {
     return Container(
       padding: EdgeInsets.all(5),
-      margin: EdgeInsets.only(right: 40, bottom: 20),
+      margin: EdgeInsets.only(top: 20, right: 40, bottom: 10),
       child: Row(
         children: [
           Expanded(
@@ -264,7 +286,6 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
           Expanded(
             flex: 1,
             child: Text("Time",
-                maxLines: 3,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
           ),
@@ -281,14 +302,19 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ProposalsTable(
+              page: page,
+              setPage: (newPage) => this.setState(() {
+                page = newPage;
+              }),
               isFiltering: query.isNotEmpty,
-              proposals: filteredProposals,
+              proposals: proposals,
               voteable: voteable,
               expandedId: expandedId,
               onTapRow: (id) => this.setState(() {
                 expandedId = id;
               }),
-              totalPages: (proposalService.totalCount / 5).ceil(),
+              totalPages: (_proposalService.totalCount / PAGE_COUNT).ceil(),
+              loadMore: () => getProposals(false),
               controller: proposalController,
               onTapVote: (proposalId, option) => sendProposal(proposalId, option),
             ),
@@ -301,30 +327,27 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return CustomDialog(
-            contentWidgets: [
-              Text(Strings.kiraNetwork,
-                style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 15),
-              Text(Strings.loading,
-                  style: TextStyle(fontSize: 20, color: KiraColors.black, fontWeight: FontWeight.w600)),
-              SizedBox(height: 15),
-              TextButton(
-                  onPressed: () async {
-                    cancelTransaction(pendingTxHash);
-                  },
-                  child: SizedBox(
-                      width: 100,
-                      height: 36,
-                      child: Center(
-                          child: Text(
-                            Strings.cancel,
-                            style: TextStyle(fontSize: 14, color: KiraColors.danger),
-                          ))
-                  )),
-            ]
-        );
+        return CustomDialog(contentWidgets: [
+          Text(
+            Strings.kiraNetwork,
+            style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 15),
+          Text(Strings.loading, style: TextStyle(fontSize: 20, color: KiraColors.black, fontWeight: FontWeight.w600)),
+          SizedBox(height: 15),
+          TextButton(
+              onPressed: () async {
+                cancelTransaction(pendingTxHash);
+              },
+              child: SizedBox(
+                  width: 100,
+                  height: 36,
+                  child: Center(
+                      child: Text(
+                    Strings.cancel,
+                    style: TextStyle(fontSize: 14, color: KiraColors.danger),
+                  )))),
+        ]);
       },
     );
   }
@@ -339,13 +362,11 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
 
     final stdTx = TransactionBuilder.buildStdTx([message], stdFee: fee, memo: 'Cancel transaction');
 
-    var result;
     try {
-      final signedStdTx = await TransactionSigner.signStdTx(currentAccount, stdTx, accountNumber: cancelAccountNumber, sequence: cancelSequence);
-      result = await TransactionSender.broadcastStdTx(account: currentAccount, stdTx: signedStdTx);
-    } catch (error) {
-    }
-    print("Cancelled transaction - $result");
+      final signedStdTx = await TransactionSigner.signStdTx(currentAccount, stdTx,
+          accountNumber: cancelAccountNumber, sequence: cancelSequence);
+      await TransactionSender.broadcastStdTx(account: currentAccount, stdTx: signedStdTx);
+    } catch (error) {}
     cancelAccountNumber = '';
     cancelSequence = '';
   }
@@ -372,7 +393,6 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
       result = error.toString();
     }
     Navigator.of(context, rootNavigator: true).pop();
-    print("Sent transaction - $result");
 
     String voteResult, txHash;
     if (result == null) {
@@ -398,35 +418,40 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
       builder: (BuildContext context) {
         return CustomDialog(
           contentWidgets: [
-            Text(Strings.kiraNetwork,
+            Text(
+              Strings.kiraNetwork,
               style: TextStyle(fontSize: 22, color: KiraColors.kPurpleColor, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 15),
             Text(voteResult.isEmpty ? Strings.invalidVote : voteResult,
                 style: TextStyle(fontSize: 20), textAlign: TextAlign.center),
             SizedBox(height: 22),
-            (txHash ?? '').isEmpty ? Container() : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                RichText(text: new TextSpan(children: [
-                  new TextSpan(text: 'TxHash: ', style: TextStyle(color: KiraColors.black)),
-                  new TextSpan(
-                      text: '0x$txHash'.replaceRange(7, txHash.length - 3, '....'),
-                      style: TextStyle(color: KiraColors.kPrimaryColor),
-                      recognizer: new TapGestureRecognizer()
-                        ..onTap = () { Navigator.pushReplacementNamed(context, '/transactions/0x$txHash'); }
-                  ),
-                ])),
-                InkWell(
-                  onTap: () {
-                    copyText("0x$txHash");
-                    showToast(Strings.txHashCopied);
-                  },
-                  child: Icon(Icons.copy, size: 20, color: KiraColors.kPrimaryColor),
-                )
-              ],
-            )
+            (txHash ?? '').isEmpty
+                ? Container()
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      RichText(
+                          text: new TextSpan(children: [
+                        new TextSpan(text: 'TxHash: ', style: TextStyle(color: KiraColors.black)),
+                        new TextSpan(
+                            text: '0x$txHash'.replaceRange(7, txHash.length - 3, '....'),
+                            style: TextStyle(color: KiraColors.kPrimaryColor),
+                            recognizer: new TapGestureRecognizer()
+                              ..onTap = () {
+                                Navigator.pushReplacementNamed(context, '/transactions/0x$txHash');
+                              }),
+                      ])),
+                      InkWell(
+                        onTap: () {
+                          copyText("0x$txHash");
+                          showToast(Strings.txHashCopied);
+                        },
+                        child: Icon(Icons.copy, size: 20, color: KiraColors.kPrimaryColor),
+                      )
+                    ],
+                  )
           ],
         );
       },

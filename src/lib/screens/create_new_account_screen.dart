@@ -14,7 +14,7 @@ import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/data/account_repository.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class CreateNewAccountScreen extends StatefulWidget {
   CreateNewAccountScreen();
@@ -24,8 +24,6 @@ class CreateNewAccountScreen extends StatefulWidget {
 }
 
 class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
-  StatusService statusService = StatusService();
-  IAccountRepository accountRepository = IAccountRepository();
   bool isNetworkHealthy = false;
   bool passwordsMatch, loading = false, mnemonicShown = false;
 
@@ -79,17 +77,18 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
       });
     }
   }
@@ -361,7 +360,7 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
   }
 
   Widget addPublicAddress() {
-    // final String gravatar = gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
+    // final String gravatar = _gravatarService.getIdenticon(currentAccount != null ? currentAccount.bech32Address : "");
 
     String bech32Address = currentAccount != null ? currentAccount.bech32Address : "";
 
@@ -442,9 +441,9 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
                   // currentAccount.encryptedMnemonic =
                   //     decryptAESCryptoJS(currentAccount.encryptedMnemonic, currentAccount.secretKey);
                   // currentAccount.checksum = decryptAESCryptoJS(currentAccount.checksum, currentAccount.secretKey);
-                  setAccountData(currentAccount.toJsonString());
+                  final _storageService = getIt<StorageService>();
+                  _storageService.setAccountData(currentAccount.toJsonString());
 
-                  BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
                   BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
 
                   final text = currentAccount.toJsonString();
@@ -667,42 +666,19 @@ class _CreateNewAccountScreenState extends State<CreateNewAccountScreen> {
     );
   }
 
-/*
-  void passwordValidation() {
-    if (createPasswordController.text.isEmpty || confirmPasswordController.text.isEmpty) {
-      if (mounted) {
-        setState(() {
-          passwordError = Strings.passwordBlank;
-        });
-      }
-    } else if (createPasswordController.text != confirmPasswordController.text) {
-      if (mounted) {
-        setState(() {
-          passwordError = Strings.passwordDontMatch;
-        });
-      }
-    } else if (createPasswordController.text.length < 5) {
-      if (mounted) {
-        setState(() {
-          passwordError = Strings.passwordLengthShort;
-        });
-      }
-    }
-  }
-*/
   Future<void> submitAndEncrypt(BuildContext context) async {
     // Create new account
+    AccountService _accountService = getIt<AccountService>();
     if (passwordsMatch == true) {
-      accountRepository.createNewAccount(createPasswordController.text, accountNameController.text).then((account) {
-        // BlocProvider.of<AccountBloc>(context)
-        //     .add(CreateNewAccount(currentAccount);
-        setState(() {
-          loading = false;
-          passwordError = "";
-          currentAccount = account;
-          mnemonic = decryptAESCryptoJS(currentAccount.encryptedMnemonic, currentAccount.secretKey);
-          wordList = mnemonic.split(' ');
-        });
+      Account account =
+          await _accountService.createNewAccount(createPasswordController.text, accountNameController.text);
+
+      setState(() {
+        loading = false;
+        passwordError = "";
+        currentAccount = account;
+        mnemonic = decryptAESCryptoJS(account.encryptedMnemonic, account.secretKey);
+        wordList = mnemonic.split(' ');
       });
     }
   }

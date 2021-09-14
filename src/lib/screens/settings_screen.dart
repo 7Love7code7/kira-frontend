@@ -4,15 +4,13 @@ import 'dart:convert';
 import 'package:blake_hash/blake_hash.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:kira_auth/config.dart';
+import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/blocs/export.dart';
-import 'package:kira_auth/widgets/header_wrapper.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -20,14 +18,25 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  StatusService statusService = StatusService();
-  TokenService tokenService = TokenService();
-  String accountId, feeTokenTicker, notification = '';
-  String expireTime = '0', error = '', accountNameError = '', currentPassword = '';
-  bool isError = true, isEditEnabled = false;
-  List<Account> accounts = [];
-  List<Token> tokens = [];
+  final _accountService = getIt<AccountService>();
+  final _storageService = getIt<StorageService>();
+  final _tokenService = getIt<TokenService>();
+  final _statusService = getIt<StatusService>();
+
+  String accountId, origin, feeTokenTicker, notification = '';
+  String expireTime = '0',
+      error = '',
+      accountNameError = '',
+      rpcUrlError = '',
+      currentPassword = '',
+      currentRpcUrl = '';
+
+  bool isError = true, isAccountEditEnabled = false, isValidatorEditEnabled = false, isNodeAdd = true;
   bool isNetworkHealthy = false;
+  List<Account> accounts = [];
+  List<String> validators = [];
+  List<Token> tokens = [];
+  Account currentAccount;
 
   FocusNode expireTimeFocusNode;
   TextEditingController expireTimeController;
@@ -43,81 +52,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   FocusNode passwordNode;
   TextEditingController passwordController;
-
-  void readCachedData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      String cachedAccountString = prefs.getString('accounts');
-      var array = cachedAccountString.split('---');
-
-      for (int index = 0; index < array.length; index++) {
-        if (array[index] != '') {
-          Account account = Account.fromString(array[index]);
-          accounts.add(account);
-        }
-      }
-
-      if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-        accountId = BlocProvider.of<AccountBloc>(context).state.currentAccount.encryptedMnemonic;
-        accountNameController.text = BlocProvider.of<AccountBloc>(context).state.currentAccount.name;
-      }
-
-      // Cached password
-      currentPassword = prefs.getString('password');
-
-      // Password expire time
-      expireTime = (prefs.getInt('expireTime') / 60000).toString();
-      expireTimeController.text = expireTime;
-
-      // Fee amount
-      int feeAmount = prefs.getInt('feeAmount');
-      if (feeAmount.runtimeType != Null)
-        feeAmountController.text = feeAmount.toString();
-      else
-        feeAmountController.text = "100";
-    });
-  }
-
-  void getTokens() async {
-    Account currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-    Token feeToken = BlocProvider.of<TokenBloc>(context).state.feeToken;
-    if (currentAccount != null && mounted) {
-      await tokenService.getTokens(currentAccount.bech32Address);
-
-      setState(() {
-        tokens = tokenService.tokens;
-        feeTokenTicker = feeToken != null
-            ? feeToken.ticker
-            : tokenService.tokens.length > 0
-                ? tokens[0].ticker
-                : null;
-      });
-    }
-  }
-
-  void getInterxRPCUrl() async {
-    var apiUrl = await loadInterxURL();
-    String interxUrl = apiUrl[0];
-    interxUrl = interxUrl.replaceAll('/api', '');
-    rpcUrlController.text = interxUrl;
-  }
-
-  void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
-    if (mounted) {
-      setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
-      });
-    }
-  }
 
   @override
   void initState() {
@@ -140,9 +74,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
     passwordController = TextEditingController();
 
     getNodeStatus();
-    getInterxRPCUrl();
     readCachedData();
+    getCurrentAccount();
     getTokens();
+  }
+
+  void readCachedData() async {
+    List<Account> cAccounts = await _storageService.getAccountData();
+    String cPassword = await _storageService.getPassword();
+    int cExpireTime = await _storageService.getExpireTime();
+    int cFeeAmount = await _storageService.getFeeAmount();
+    List<String> _validators = await _storageService.getValidators();
+
+    print(_validators);
+    var apiUrl = await _storageService.getLiveRpcUrl();
+    String interxUrl = apiUrl[0];
+
+    if (mounted) {
+      setState(() {
+        if (_validators.length == 0) {
+          _validators.add(interxUrl);
+        }
+        currentRpcUrl = interxUrl;
+        rpcUrlController.text = interxUrl;
+        origin = apiUrl[1];
+
+        accounts = cAccounts;
+        validators = _validators;
+
+        // Cached password
+        currentPassword = cPassword;
+
+        // Password expire time
+        expireTime = (cExpireTime / 60000).toString();
+        expireTimeController.text = expireTime;
+
+        // Fee amount
+        feeAmountController.text = cFeeAmount.toString();
+      });
+    }
+  }
+
+  void getTokens() async {
+    Token feeToken = await _storageService.getFeeToken();
+
+    Account curAccount;
+    curAccount = _accountService.currentAccount;
+    if (curAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (curAccount != null) {
+      List<Token> _tokenBalance = _tokenService.tokens;
+
+      if (_tokenBalance.length == 0) {
+        _tokenBalance = await _storageService.getTokenBalance(curAccount.bech32Address);
+      }
+
+      if (_tokenBalance.length == 0) {
+        await _tokenService.getTokens(curAccount.bech32Address);
+        _tokenBalance = _tokenService.tokens;
+      }
+
+      if (mounted) {
+        setState(() {
+          tokens = _tokenBalance;
+          feeTokenTicker = feeToken != null
+              ? feeToken.ticker
+              : _tokenBalance.length > 0
+                  ? _tokenBalance[0].ticker
+                  : null;
+        });
+      }
+    }
+  }
+
+  void getNodeStatus() async {
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
+      });
+    }
+  }
+
+  getCurrentAccount() async {
+    Account curAccount = _accountService.currentAccount;
+
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
+    if (mounted) {
+      accountNameController.text = curAccount.name;
+      setState(() {
+        currentAccount = curAccount;
+        accountId = curAccount.encryptedMnemonic;
+      });
+    }
   }
 
   @override
@@ -187,12 +222,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     html.Url.revokeObjectUrl(url);
   }
 
-  void onUpdate() {
+  void onUpdate() async {
     if (expireTimeController.text == null) return;
+
+    setState(() {
+      notification = Strings.checkingNodeStatus;
+      isError = true;
+    });
 
     int minutes = int.tryParse(expireTimeController.text);
     if (minutes == null) {
-      this.setState(() {
+      setState(() {
         notification = Strings.invalidExpireTime;
         isError = true;
       });
@@ -201,80 +241,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     int feeAmount = int.tryParse(feeAmountController.text);
     if (feeAmount == null) {
-      this.setState(() {
+      setState(() {
         notification = Strings.invalidFeeAmount;
         isError = true;
       });
       return;
     }
 
-    String customInterxRPCUrl = rpcUrlController.text;
-    if (customInterxRPCUrl == null || customInterxRPCUrl.length == 0) {
-      this.setState(() {
-        notification = Strings.invalidCustomRpcURL;
+    if (currentRpcUrl == null || currentRpcUrl.length == 0) {
+      setState(() {
+        notification = Strings.emptyRpcUrl;
         isError = true;
       });
       return;
     }
 
-    this.setState(() {
+    await _storageService.setExpireTime(Duration(minutes: minutes));
+    await _storageService.setInterxRPCUrl(currentRpcUrl);
+    await _storageService.setLiveRpcUrl(currentRpcUrl, origin);
+    await _storageService.setFeeAmount(feeAmount);
+
+    Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
+    await _accountService.setCurrentAccount(currentAccount);
+
+    Token feeToken = tokens.where((e) => e.ticker == feeTokenTicker).toList()[0];
+    _tokenService.setFeeToken(feeToken);
+
+    await _storageService.setValidators(validators);
+
+    await _statusService.getNodeStatus();
+    BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(_statusService.nodeInfo.network, _statusService.rpcUrl));
+
+    setState(() {
       notification = Strings.updateSuccess;
       isError = false;
     });
-
-    setExpireTime(Duration(minutes: minutes));
-    setInterxRPCUrl(customInterxRPCUrl);
-    setFeeAmount(feeAmount);
-
-    Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
-    BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-    setCurrentAccount(currentAccount.toJsonString());
-
-    Token feeToken = tokens.where((e) => e.ticker == feeTokenTicker).toList()[0];
-    BlocProvider.of<TokenBloc>(context).add(SetFeeToken(feeToken));
-    setFeeToken(feeToken.toString());
   }
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       }
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                    alignment: Alignment.center,
-                    margin: EdgeInsets.only(top: 50, bottom: 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 500),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            addAccounts(),
-                            addButtons(context),
-                            if (isEditEnabled) addAccountName(),
-                            if (isEditEnabled) addFinishButton(),
-                            addCustomRPC(),
-                            addRPCButtons(context),
-                            addErrorMessage(),
-                            if (tokens.length > 0) addFeeToken(),
-                            addFeeAmount(),
-                            addExpirePassword(),
-                            ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
-                            addGoBackButton(),
-                          ],
-                        )),
-                  ));
-            }));
+        body: HeaderWrapper(
+            isNetworkHealthy: isNetworkHealthy,
+            childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 500),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      addAccounts(),
+                      addAccountButtons(context),
+                      if (isAccountEditEnabled) addAccountName(),
+                      if (isAccountEditEnabled) addAccountEditButtons(),
+                      addValidators(),
+                      addValidatorButtons(context),
+                      if (isValidatorEditEnabled) addCustomRPC(),
+                      if (isValidatorEditEnabled) addValidatorEditButtons(),
+                      addErrorMessage(),
+                      if (tokens.length > 0) addFeeToken(),
+                      addFeeAmount(),
+                      addExpirePassword(),
+                      ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
+                      addGoBackButton(),
+                    ],
+                  )),
+            )));
   }
 
   Widget addHeaderTitle() {
@@ -335,21 +376,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ));
   }
 
-  Widget addButtons(BuildContext context) {
+  Widget addValidators() {
     return Container(
-        margin: EdgeInsets.only(top: 8, bottom: 30),
+        decoration: BoxDecoration(
+            border: Border.all(width: 2, color: KiraColors.kPurpleColor),
+            color: KiraColors.transparent,
+            borderRadius: BorderRadius.circular(9)),
+        // dropdown below..
+        child: DropdownButtonHideUnderline(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: EdgeInsets.only(top: 10, left: 15, bottom: 0),
+                child: Text(Strings.validators, style: TextStyle(color: KiraColors.kGrayColor, fontSize: 12)),
+              ),
+              ButtonTheme(
+                alignedDropdown: true,
+                child: DropdownButton<String>(
+                    dropdownColor: KiraColors.kPurpleColor,
+                    value: currentRpcUrl,
+                    icon: Icon(Icons.arrow_drop_down),
+                    iconSize: 32,
+                    underline: SizedBox(),
+                    onChanged: (String rpcUrl) {
+                      setState(() {
+                        currentRpcUrl = rpcUrl;
+                        rpcUrlController.text = rpcUrl;
+                      });
+                    },
+                    items: validators.map<DropdownMenuItem<String>>((String rpcUrl) {
+                      return DropdownMenuItem<String>(
+                        value: rpcUrl,
+                        child: Container(
+                            height: 25,
+                            alignment: Alignment.topCenter,
+                            child: Text(getIPOnly(rpcUrl), style: TextStyle(color: KiraColors.white, fontSize: 18))),
+                      );
+                    }).toList()),
+              ),
+            ],
+          ),
+        ));
+  }
+
+  Widget addAccountButtons(BuildContext context) {
+    return Container(
+        margin: EdgeInsets.only(top: 8, bottom: 20),
         alignment: Alignment.centerLeft,
         child:
             Row(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.center, children: [
           InkWell(
               onTap: () {
-                if (accounts.isEmpty) return;
-                if (accountId == null || accountId == '') return;
-
-                showConfirmationDialog(context);
+                setState(() {
+                  isAccountEditEnabled = true;
+                });
               },
               child: Text(
-                Strings.remove,
+                Strings.edit,
                 textAlign: TextAlign.left,
                 style: TextStyle(
                   color: KiraColors.green3.withOpacity(0.9),
@@ -360,12 +445,273 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SizedBox(width: 10),
           InkWell(
               onTap: () {
+                if (accounts.isEmpty) return;
+                if (accountId == null || accountId == '') return;
+
+                showConfirmationDialog(context, true);
+              },
+              child: Text(
+                Strings.remove,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: KiraColors.green3.withOpacity(0.9),
+                  fontSize: 14,
+                  decoration: TextDecoration.underline,
+                ),
+              )),
+        ]));
+  }
+
+  Widget addAccountName() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppTextField(
+        hintText: Strings.accountName,
+        labelText: Strings.accountName,
+        focusNode: accountNameNode,
+        controller: accountNameController,
+        textInputAction: TextInputAction.done,
+        maxLines: 1,
+        autocorrect: false,
+        keyboardType: TextInputType.text,
+        textAlign: TextAlign.left,
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: KiraColors.white,
+          fontFamily: 'NunitoSans',
+        ),
+      ),
+      SizedBox(height: 10),
+    ]);
+  }
+
+  Widget addAccountEditButtons() {
+    return Container(
+        margin: EdgeInsets.only(top: 5, bottom: 25),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            InkWell(
+                onTap: () {
+                  var accountName = accountNameController.text;
+                  if (accountName == "") {
+                    setState(() {
+                      accountNameError = Strings.accountNameInvalid;
+                    });
+                    return;
+                  }
+
+                  var index = accounts.indexWhere((item) => item.encryptedMnemonic == accountId);
+                  accounts.elementAt(index).name = accountName;
+
+                  String updatedString = "";
+
+                  for (int i = 0; i < accounts.length; i++) {
+                    updatedString += accounts[i].toJsonString();
+                    if (i < accounts.length - 1) {
+                      updatedString += "---";
+                    }
+                  }
+
+                  _storageService.removeCachedAccount();
+                  _storageService.setAccountData(updatedString);
+
+                  Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
+                  _accountService.setCurrentAccount(currentAccount);
+
+                  setState(() {
+                    isAccountEditEnabled = false;
+                  });
+                },
+                child: Text(
+                  Strings.save,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: KiraColors.blue1.withOpacity(0.9),
+                    fontSize: 14,
+                    decoration: TextDecoration.underline,
+                  ),
+                )),
+            if (accountNameError.isNotEmpty)
+              Text(accountNameError,
+                  style: TextStyle(
+                    fontSize: 13.0,
+                    color: KiraColors.kYellowColor,
+                  ))
+          ],
+        ));
+  }
+
+  Widget addCustomRPC() {
+    return Container(
+        margin: EdgeInsets.only(top: 15),
+        alignment: Alignment.centerLeft,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppTextField(
+            hintText: Strings.rpcURL,
+            labelText: Strings.rpcURL,
+            focusNode: rpcUrlNode,
+            controller: rpcUrlController,
+            textInputAction: TextInputAction.done,
+            maxLines: 1,
+            autocorrect: false,
+            keyboardType: TextInputType.text,
+            textAlign: TextAlign.left,
+            onChanged: (String text) {
+              // setState(() {
+              // var urlPattern = r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}\:[0-9]{1,5}$";
+              // RegExp regex = new RegExp(urlPattern, caseSensitive: false);
+
+              // if (!regex.hasMatch(text)) {
+              //   error = Strings.invalidUrl;
+              // } else {
+              //   error = "";
+              // }
+              // });
+            },
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: KiraColors.white,
+              fontFamily: 'NunitoSans',
+            ),
+          ),
+          SizedBox(height: 10),
+        ]));
+  }
+
+  Widget addValidatorEditButtons() {
+    return Container(
+        margin: EdgeInsets.only(top: 0, bottom: 10),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.center, children: [
+              InkWell(
+                  onTap: () async {
+                    var newRpcUrl = rpcUrlController.text;
+                    setState(() {
+                      rpcUrlError = Strings.checkingNodeStatus;
+                    });
+
+                    newRpcUrl = newRpcUrl.trim();
+                    String checkedUrl = await _statusService.checkNodeStatus(newRpcUrl);
+
+                    if (newRpcUrl == "" || checkedUrl == "invalid") {
+                      setState(() {
+                        rpcUrlError = Strings.invalidRpcUrl;
+                      });
+                      return;
+                    }
+
+                    var index = validators.indexWhere((element) => element.contains(newRpcUrl));
+
+                    setState(() {
+                      if (isNodeAdd && index == -1) {
+                        validators.add(checkedUrl);
+                        currentRpcUrl = checkedUrl;
+                      } else {
+                        var index = validators.indexWhere((item) => item == currentRpcUrl);
+                        validators[index] = checkedUrl;
+                        currentRpcUrl = checkedUrl;
+                      }
+
+                      rpcUrlError = "";
+                      isValidatorEditEnabled = false;
+                    });
+                  },
+                  child: Text(
+                    Strings.save,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      color: KiraColors.blue1.withOpacity(0.9),
+                      fontSize: 14,
+                      decoration: TextDecoration.underline,
+                    ),
+                  )),
+              SizedBox(width: 10),
+              InkWell(
+                  onTap: () {
+                    rpcUrlController.text = currentRpcUrl;
+                    setState(() {
+                      isValidatorEditEnabled = false;
+                    });
+                  },
+                  child: Text(
+                    Strings.cancel,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      color: KiraColors.blue1.withOpacity(0.9),
+                      fontSize: 14,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ))
+            ]),
+            if (rpcUrlError.isNotEmpty)
+              Text(rpcUrlError,
+                  style: TextStyle(
+                    fontSize: 13.0,
+                    color: KiraColors.kYellowColor,
+                  ))
+          ],
+        ));
+  }
+
+  Widget addValidatorButtons(BuildContext context) {
+    return Container(
+        margin: EdgeInsets.only(top: 8, bottom: 5),
+        alignment: Alignment.centerLeft,
+        child:
+            Row(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.center, children: [
+          InkWell(
+              onTap: () {
+                rpcUrlController.text = "";
                 setState(() {
-                  isEditEnabled = true;
+                  isValidatorEditEnabled = true;
+                  isNodeAdd = true;
+                });
+              },
+              child: Text(
+                Strings.add,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: KiraColors.green3.withOpacity(0.9),
+                  fontSize: 14,
+                  decoration: TextDecoration.underline,
+                ),
+              )),
+          SizedBox(width: 10),
+          InkWell(
+              onTap: () {
+                rpcUrlController.text = currentRpcUrl;
+                setState(() {
+                  isValidatorEditEnabled = true;
+                  isNodeAdd = false;
                 });
               },
               child: Text(
                 Strings.edit,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: KiraColors.green3.withOpacity(0.9),
+                  fontSize: 14,
+                  decoration: TextDecoration.underline,
+                ),
+              )),
+          SizedBox(width: 10),
+          InkWell(
+              onTap: () {
+                if (validators.isEmpty) return;
+                if (currentRpcUrl == null || currentRpcUrl == '') return;
+
+                showConfirmationDialog(context, false);
+              },
+              child: Text(
+                Strings.remove,
                 textAlign: TextAlign.left,
                 style: TextStyle(
                   color: KiraColors.green3.withOpacity(0.9),
@@ -379,7 +725,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget addErrorMessage() {
     return Container(
         // padding: EdgeInsets.symmetric(horizontal: 20),
-        margin: EdgeInsets.only(bottom: this.error.isNotEmpty ? 30 : 0),
+        margin: EdgeInsets.only(bottom: error.isNotEmpty ? 30 : 0),
         child: Column(
           children: [
             Column(
@@ -388,7 +734,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Container(
                   alignment: AlignmentDirectional(0, 0),
-                  child: Text(this.error == null ? "" : error,
+                  child: Text(error == null ? "" : error,
                       style: TextStyle(
                         fontSize: 14.0,
                         color: KiraColors.kYellowColor,
@@ -445,156 +791,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ));
-  }
-
-  Widget addAccountName() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppTextField(
-        hintText: Strings.accountName,
-        labelText: Strings.accountName,
-        focusNode: accountNameNode,
-        controller: accountNameController,
-        textInputAction: TextInputAction.done,
-        maxLines: 1,
-        autocorrect: false,
-        keyboardType: TextInputType.text,
-        textAlign: TextAlign.left,
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 18,
-          color: KiraColors.white,
-          fontFamily: 'NunitoSans',
-        ),
-      ),
-      SizedBox(height: 10),
-    ]);
-  }
-
-  Widget addFinishButton() {
-    return Container(
-        margin: EdgeInsets.only(top: 5, bottom: 25),
-        alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            InkWell(
-                onTap: () {
-                  var accountName = accountNameController.text;
-                  if (accountName == "") {
-                    setState(() {
-                      accountNameError = Strings.accountNameInvalid;
-                    });
-                    return;
-                  }
-
-                  var index = accounts.indexWhere((item) => item.encryptedMnemonic == accountId);
-                  accounts.elementAt(index).name = accountName;
-
-                  String updatedString = "";
-
-                  for (int i = 0; i < accounts.length; i++) {
-                    updatedString += accounts[i].toJsonString();
-                    if (i < accounts.length - 1) {
-                      updatedString += "---";
-                    }
-                  }
-
-                  removeCachedAccount();
-                  setAccountData(updatedString);
-
-                  Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
-                  BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
-                  setCurrentAccount(currentAccount.toJsonString());
-
-                  setState(() {
-                    isEditEnabled = false;
-                  });
-                },
-                child: Text(
-                  Strings.finish,
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    color: KiraColors.blue1.withOpacity(0.9),
-                    fontSize: 14,
-                    decoration: TextDecoration.underline,
-                  ),
-                )),
-            if (accountNameError.isNotEmpty)
-              Text(accountNameError,
-                  style: TextStyle(
-                    fontSize: 13.0,
-                    color: KiraColors.kYellowColor,
-                  ))
-          ],
-        ));
-  }
-
-  Widget addCustomRPC() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppTextField(
-        hintText: Strings.rpcURL,
-        labelText: Strings.rpcURL,
-        focusNode: rpcUrlNode,
-        controller: rpcUrlController,
-        textInputAction: TextInputAction.done,
-        maxLines: 1,
-        autocorrect: false,
-        keyboardType: TextInputType.text,
-        textAlign: TextAlign.left,
-        onChanged: (String text) {
-          setState(() {
-            var urlPattern = r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}\:[0-9]{1,5}$";
-            RegExp regex = new RegExp(urlPattern, caseSensitive: false);
-
-            if (!regex.hasMatch(text)) {
-              error = Strings.invalidUrl;
-            } else {
-              error = "";
-            }
-          });
-        },
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 18,
-          color: KiraColors.white,
-          fontFamily: 'NunitoSans',
-        ),
-      ),
-      SizedBox(height: 10),
-    ]);
-  }
-
-  Widget addRPCButtons(BuildContext context) {
-    return Container(
-        margin: EdgeInsets.only(top: 0, bottom: 10),
-        alignment: Alignment.centerLeft,
-        child:
-            Row(mainAxisAlignment: MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.center, children: [
-          InkWell(
-              onTap: () {},
-              child: Text(
-                Strings.add,
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  color: KiraColors.green3.withOpacity(0.9),
-                  fontSize: 14,
-                  decoration: TextDecoration.underline,
-                ),
-              )),
-          SizedBox(width: 10),
-          InkWell(
-              onTap: () {},
-              child: Text(
-                Strings.edit,
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  color: KiraColors.green3.withOpacity(0.9),
-                  fontSize: 14,
-                  decoration: TextDecoration.underline,
-                ),
-              )),
-        ]));
   }
 
   Widget addFeeAmount() {
@@ -682,7 +878,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               height: 60,
               style: 2,
               onPressed: () {
-                Navigator.pushReplacementNamed(context, '/');
+                onUpdate();
               },
             ),
             SizedBox(height: 30),
@@ -731,7 +927,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               height: 60,
               style: 2,
               onPressed: () {
-                this.onUpdate();
+                onUpdate();
               },
             ),
           ]),
@@ -753,7 +949,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ]);
   }
 
-  showConfirmationDialog(BuildContext context) {
+  showConfirmationDialog(BuildContext context, bool isAccount) {
     // set up the buttons
     Widget noButton = TextButton(
       child: Text(
@@ -773,31 +969,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
         textAlign: TextAlign.center,
       ),
       onPressed: () {
-        var updated = accounts;
-        updated.removeWhere((item) => item.encryptedMnemonic == accountId);
+        if (isAccount) {
+          var updated = accounts;
+          updated.removeWhere((item) => item.encryptedMnemonic == accountId);
 
-        String updatedString = "";
+          String updatedString = "";
 
-        for (int i = 0; i < updated.length; i++) {
-          updatedString += updated[i].toJsonString();
-          if (i < updated.length - 1) {
-            updatedString += "---";
+          for (int i = 0; i < updated.length; i++) {
+            updatedString += updated[i].toJsonString();
+            if (i < updated.length - 1) {
+              updatedString += "---";
+            }
+          }
+
+          setState(() {
+            accounts = updated;
+            accountId = accounts.length > 0 ? accounts[0].encryptedMnemonic : null;
+          });
+
+          _storageService.removeCachedAccount();
+          _storageService.setAccountData(updatedString);
+
+          if (updatedString.isEmpty) {
+            _storageService.removePassword();
+            Navigator.pushReplacementNamed(context, '/');
+          }
+        } else {
+          var updated = validators;
+          updated.removeWhere((item) => item == currentRpcUrl);
+
+          setState(() {
+            validators = updated;
+            currentRpcUrl = validators.length > 0 ? validators[0] : null;
+            rpcUrlController.text = currentRpcUrl;
+          });
+
+          if (updated.length == 0) {
+            Navigator.pushReplacementNamed(context, '/');
           }
         }
-
-        setState(() {
-          accounts = updated;
-          accountId = accounts.length > 0 ? accounts[0].encryptedMnemonic : null;
-        });
-
-        removeCachedAccount();
-        setAccountData(updatedString);
-
-        if (updatedString.isEmpty) {
-          removePassword();
-          Navigator.pushReplacementNamed(context, '/');
-        }
-
         Navigator.of(context, rootNavigator: true).pop();
       },
     );
@@ -816,7 +1026,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               height: 15,
             ),
             Text(
-              Strings.removeAccountConfirmation,
+              isAccount ? Strings.removeAccountConfirmation : Strings.removeValidatorConfirmation,
               style: TextStyle(fontSize: 20),
               textAlign: TextAlign.center,
             ),

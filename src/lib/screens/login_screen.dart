@@ -1,13 +1,14 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:flutter/material.dart';
 import 'package:kira_auth/utils/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/blocs/export.dart';
-import 'package:kira_auth/config.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -15,7 +16,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  StatusService statusService = StatusService();
   List<String> networkIds = [Strings.customNetwork];
   String networkId = Strings.customNetwork;
   String testedRpcUrl = "";
@@ -24,6 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
   HeaderWrapper headerWrapper;
   FocusNode rpcUrlNode;
   TextEditingController rpcUrlController;
+
+  final _storageService = getIt<StorageService>();
 
   @override
   void initState() {
@@ -35,15 +37,20 @@ class _LoginScreenState extends State<LoginScreen> {
     if (params.containsKey("rpc")) {
       var rpcURL = params['rpc'];
       onConnectPressed(rpcURL);
-      print(rpcURL);
     }
 
-    setTopBarStatus(false);
-    setLoginStatus(false);
+    _storageService.setTopBarStatus(false);
+    _storageService.setLoginStatus(false);
     rpcUrlNode = FocusNode();
     rpcUrlController = TextEditingController();
     getNodeStatus(true);
-    // getInterxRPCUrl();
+    initializeValues();
+  }
+
+  void initializeValues() {
+    _storageService.setLastSearchedAccount("");
+    _storageService.setTopbarIndex(0);
+    _storageService.setTabIndex(0);
   }
 
   @override
@@ -54,60 +61,45 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void getNodeStatus(bool inited) async {
+    final _statusService = getIt<StatusService>();
+
+    if (!inited) {
+      await _statusService.getNodeStatus();
+    }
+
+    var rpcUrl = await _storageService.getLiveRpcUrl();
+
     if (mounted) {
       try {
-        await statusService.getNodeStatus();
-        // setState(() {
-        testedRpcUrl = statusService.rpcUrl;
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
+        bool networkHealth = _statusService.isNetworkHealthy;
+        NodeInfo nodeInfo = _statusService.nodeInfo;
+        BlocProvider.of<NetworkBloc>(context)
+            .add(SetNetworkInfo(_statusService.nodeInfo.network, _statusService.rpcUrl));
+
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
           setState(() {
-            if (!networkIds.contains(statusService.nodeInfo.network)) {
-              networkIds.add(statusService.nodeInfo.network);
+            if (!networkIds.contains(nodeInfo.network)) {
+              networkIds.add(nodeInfo.network);
             }
-            networkId = statusService.nodeInfo.network;
-            isNetworkHealthy = statusService.isNetworkHealthy;
+            networkId = nodeInfo.network;
+            isNetworkHealthy = networkHealth;
+            testedRpcUrl = getIPOnly(rpcUrl[0]);
             isRpcError = false;
           });
-          BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(networkId, testedRpcUrl));
         } else {
           isNetworkHealthy = false;
         }
         isLoading = false;
-        // });
       } catch (e) {
         print("ERROR OCCURED");
         setState(() {
-          testedRpcUrl = statusService.rpcUrl;
+          testedRpcUrl = getIPOnly(rpcUrl[0]);
           isNetworkHealthy = false;
           isLoading = false;
           if (inited == false) isRpcError = true;
         });
       }
     }
-  }
-
-  // void checkNodeStatus() async {
-  //   if (mounted) {
-  //     try {
-  //       bool status = await statusService.checkNodeStatus();
-  //       setState(() {
-  //         isNetworkHealthy = status;
-  //         isLoading = false;
-  //         // isRpcError = !status;
-  //       });
-  //     } catch (e) {
-  //       setState(() {
-  //         isNetworkHealthy = false;
-  //         isLoading = false;
-  //         // isRpcError = true;
-  //       });
-  //     }
-  //   }
-  // }
-
-  void getInterxRPCUrl() async {
-    var apiUrl = await loadInterxURL();
-    rpcUrlController.text = apiUrl[0];
   }
 
   void disconnect() {
@@ -118,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       rpcUrlController.text = "";
       String customInterxRPCUrl = rpcUrlController.text;
-      setInterxRPCUrl(customInterxRPCUrl);
+      _storageService.setInterxRPCUrl(customInterxRPCUrl);
       // Future.delayed(const Duration(milliseconds: 500), () async {
       //   checkNodeStatus();
       // });
@@ -237,8 +229,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               networkIds.add(Strings.customNetwork);
                             }
                           });
-                          var nodeAddress = BlocProvider.of<NetworkBloc>(context).state.nodeAddress;
-                          BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(networkId, nodeAddress));
                         }
                       },
                       items: networkIds.map<DropdownMenuItem<String>>((String value) {
@@ -297,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
           height: 60,
           style: 2,
           onPressed: () {
-            onConnectPressed(rpcUrlController.text);
+            onConnectPressed(rpcUrlController.text.trim());
           },
         ));
   }
@@ -306,18 +296,16 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       setState(() {
         isLoading = true;
-        isNetworkHealthy = false;
       });
     }
 
     // String customInterxRPCUrl = rpcUrlController.text;
-    setInterxRPCUrl(customInterxRPCUrl);
+    _storageService.setLiveRpcUrl("", "");
+    _storageService.setInterxRPCUrl(customInterxRPCUrl);
 
     Future.delayed(const Duration(milliseconds: 500), () async {
       getNodeStatus(false);
     });
-    //getNodeStatus();
-    //getInterxRPCUrl();
   }
 
   Widget addDescription() {
@@ -343,7 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
       onPressed: () {
         String customInterxRPCUrl = rpcUrlController.text;
         if (customInterxRPCUrl.length > 0) {
-          setInterxRPCUrl(customInterxRPCUrl);
+          _storageService.setInterxRPCUrl(customInterxRPCUrl);
         }
         Navigator.pushReplacementNamed(context, '/login-keyfile');
       },
@@ -373,7 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
       onPressed: () {
         String customInterxRPCUrl = rpcUrlController.text;
         if (customInterxRPCUrl.length > 0) {
-          setInterxRPCUrl(customInterxRPCUrl);
+          _storageService.setInterxRPCUrl(customInterxRPCUrl);
         }
         Navigator.pushReplacementNamed(context, '/login-mnemonic');
       },
@@ -388,8 +376,8 @@ class _LoginScreenState extends State<LoginScreen> {
       height: 60,
       style: 1,
       onPressed: () {
-        setLoginStatus(false);
-        Navigator.pushReplacementNamed(context, '/account');
+        _storageService.setLoginStatus(false);
+        Navigator.pushReplacementNamed(context, '/account?rpc=$testedRpcUrl');
       },
     );
   }

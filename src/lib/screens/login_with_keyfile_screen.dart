@@ -10,6 +10,7 @@ import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class LoginWithKeyfileScreen extends StatefulWidget {
   @override
@@ -17,7 +18,6 @@ class LoginWithKeyfileScreen extends StatefulWidget {
 }
 
 class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
-  StatusService statusService = StatusService();
   Account account;
   String accountString, fileName, password, error;
   bool imported = false;
@@ -85,17 +85,18 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
-
     if (mounted) {
+      final _statusService = getIt<StatusService>();
+      bool networkHealth = _statusService.isNetworkHealthy;
+      NodeInfo nodeInfo = _statusService.nodeInfo;
+
+      if (nodeInfo == null) {
+        final _storageService = getIt<StorageService>();
+        nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+      }
+
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
+        isNetworkHealthy = nodeInfo != null && nodeInfo.network.isNotEmpty ? networkHealth : false;
       });
     }
   }
@@ -186,7 +187,7 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
   Widget addDropzone() {
     return Container(
         margin: EdgeInsets.only(bottom: 20),
-        child: Row(
+        child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
@@ -256,7 +257,7 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
         ));
   }
 
-  void onLoginClick() {
+  void onLoginClick() async {
     if (password == "") {
       this.setState(() {
         error = Strings.passwordBlank;
@@ -278,17 +279,17 @@ class _LoginWithKeyfileScreenState extends State<LoginWithKeyfileScreen> {
     }
 
     if (decryptAESCryptoJS(account.checksum, secretKey) == 'kira') {
-      BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(account));
+      final _accountService = getIt<AccountService>();
+      await _accountService.setCurrentAccount(account);
       BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(account.hexAddress));
 
       account.encryptedMnemonic = decryptAESCryptoJS(account.encryptedMnemonic, secretKey);
       account.checksum = decryptAESCryptoJS(account.checksum, secretKey);
-      setAccountData(account.toJsonString());
-      setPassword(password);
 
-
-
-      setLoginStatus(true);
+      final _storageService = getIt<StorageService>();
+      await _storageService.setAccountData(account.toJsonString());
+      await _storageService.setPassword(password);
+      await _storageService.setLoginStatus(true);
 
       Navigator.pushReplacementNamed(context, '/account');
     } else {

@@ -47,6 +47,7 @@ class _QrCodeCameraWebImplState extends State<QrCodeCameraWebImpl> {
   final String _uniqueKey = UniqueKey().toString();
 
   //see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
+  // ignore: non_constant_identifier_names
   final _HAVE_ENOUGH_DATA = 4;
 
   // Webcam widget to insert into the tree

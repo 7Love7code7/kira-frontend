@@ -7,118 +7,156 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:html' as html;
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class NetworkScreen extends StatefulWidget {
-
   @override
   _NetworkScreenState createState() => _NetworkScreenState();
 }
 
 class _NetworkScreenState extends State<NetworkScreen> {
-  NetworkService networkService = NetworkService();
-  StatusService statusService = StatusService();
-  Timer timer;
+  final _networkService = getIt<NetworkService>();
+
   List<Validator> validators = [];
-  List<Validator> filteredValidators = [];
   String query = "";
-  bool initialFetched = false;
+  bool moreLoading = false;
+  Account currentAccount;
+  bool isFiltering = false;
 
   List<String> favoriteValidators = [];
   int expandedTop = -1;
   int sortIndex = 0;
   bool isAscending = true;
   bool isNetworkHealthy = false;
+  int page = 1;
   StreamController validatorController = StreamController.broadcast();
 
   bool isLoggedIn = false;
-
-  Future<bool> isUserLoggedIn() async {
-    isLoggedIn = await getLoginStatus();
-    return isLoggedIn;
-
-  }
-
+  String customInterxRPCUrl = "";
+  List<String> networkIds = [Strings.customNetwork];
+  String networkId = Strings.customNetwork;
+  Timer timer;
 
   @override
   void initState() {
     super.initState();
 
-    setTopBarStatus(true);
+    final _storageService = getIt<StorageService>();
+    _storageService.setTopbarIndex(3);
 
-    isUserLoggedIn().then((isLoggedIn) {
+    var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
+    Map<String, String> params = uri.queryParameters; // query parameters automatically populated
 
-      if (isLoggedIn){
-        checkPasswordExpired().then((success) {
-          if (success) {
-            Navigator.pushReplacementNamed(context, '/login');
-          }
-        });
-      }
-    });
+    if (params.containsKey("rpc")) {
+      customInterxRPCUrl = params['rpc'];
+      setState(() {
+        isNetworkHealthy = false;
+      });
+      _storageService.setInterxRPCUrl(customInterxRPCUrl);
+    } else {
+      _storageService.getLoginStatus().then((isLoggedIn) {
+        if (isLoggedIn) {
+          setState(() {
+            _storageService.checkPasswordExpired().then((success) {
+              if (success) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            });
+          });
+        }
+      });
+    }
 
     getNodeStatus();
+    getValidators();
+    getCurrentAccount();
 
-    getValidators(false);
-    timer = Timer.periodic(Duration(seconds: 10), (timer) {
-      getValidators(true);
+    timer = Timer.periodic(Duration(minutes: 2), (timer) {
+      getValidators();
     });
   }
 
-  void getValidators(bool loadNew) async {
-    await networkService.getValidators(loadNew);
-    if (networkService.totalCount > networkService.validators.length)
-      getValidators(false);
+  getCurrentAccount() async {
+    final _accountService = getIt<AccountService>();
+    final _storageService = getIt<StorageService>();
+    Account curAccount = _accountService.currentAccount;
+
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
+
     if (mounted) {
       setState(() {
-        initialFetched = true;
-        favoriteValidators = BlocProvider
-            .of<ValidatorBloc>(context)
-            .state
-            .favoriteValidators;
-        var temp = networkService.validators;
+        currentAccount = curAccount;
+      });
+    }
+  }
+
+  void getValidators() async {
+    setState(() {
+      moreLoading = true;
+    });
+    await _networkService.getValidators();
+    if (mounted) {
+      setState(() {
+        moreLoading = false;
+        if (isLoggedIn) favoriteValidators = BlocProvider.of<ValidatorBloc>(context).state.favoriteValidators;
+        var temp = _networkService.validators;
         temp.forEach((element) {
-          element.isFavorite = favoriteValidators.contains(element.address);
+          element.isFavorite = isLoggedIn || favoriteValidators.contains(element.address);
         });
+        if (sortIndex == 0) {
+          temp.sort((a, b) => isAscending ? a.top.compareTo(b.top) : b.top.compareTo(a.top));
+        } else if (sortIndex == 2) {
+          temp.sort((a, b) => isAscending ? a.moniker.compareTo(b.moniker) : b.moniker.compareTo(a.moniker));
+        } else if (sortIndex == 3) {
+          temp.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+        } else if (sortIndex == 4) {
+          temp.sort((a, b) => !isAscending
+              ? a.isFavorite.toString().compareTo(b.isFavorite.toString())
+              : b.isFavorite.toString().compareTo(a.isFavorite.toString()));
+        }
         validators.clear();
         validators.addAll(temp);
 
         var uri = Uri.dataFromString(html.window.location.href);
         Map<String, String> params = uri.queryParameters;
 
-        if (params.containsKey("info")) {
-          var searchInfo = params['info'];
+        var keyword = query;
+        if (params.containsKey("info")) keyword = params['info'].toLowerCase();
 
-          filteredValidators = validators
-              .where((x) =>
-          x.moniker.toLowerCase().contains(searchInfo.toLowerCase()) ||
-              x.address.toLowerCase().contains(searchInfo.toLowerCase()))
-              .toList();
-        } else {
-          filteredValidators.clear();
-          filteredValidators.addAll(
-              query.isEmpty ? validators : validators.where((x) =>
-              x.moniker.toLowerCase().contains(query) ||
-                  x.address.toLowerCase().contains(query)));
-          validatorController.add(null);
-        }
+        validatorController.add(keyword);
       });
     }
   }
 
   void getNodeStatus() async {
-    if (mounted) {
-      await statusService.getNodeStatus();
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
 
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
+    if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null &&
-            statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(
-              statusService.nodeInfo.network, statusService.rpcUrl));
+        if (nodeInfo != null && nodeInfo.network.isNotEmpty) {
+          isNetworkHealthy = networkHealth;
+          if (this.customInterxRPCUrl != "") {
+            setState(() {
+              if (!networkIds.contains(nodeInfo.network)) {
+                networkIds.add(nodeInfo.network);
+              }
+              networkId = nodeInfo.network;
+              isNetworkHealthy = networkHealth;
+            });
+            this.customInterxRPCUrl = "";
+          }
         } else {
           isNetworkHealthy = false;
         }
@@ -127,34 +165,40 @@ class _NetworkScreenState extends State<NetworkScreen> {
   }
 
   @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1200),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeader(),
-                            addTableHeader(),
-                            !initialFetched ? addLoadingIndicator() : filteredValidators.isEmpty ? Container(
+        body: HeaderWrapper(
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1200),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    addHeaderTitle(),
+                    isFiltering ? addSearchInput() : Container(),
+                    addTableHeader(),
+                    moreLoading
+                        ? addLoadingIndicator()
+                        : validators.isEmpty
+                            ? Container(
                                 margin: EdgeInsets.only(top: 20, left: 20),
                                 child: Text("No validators to show",
                                     style: TextStyle(
                                         color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
-                                : addValidatorsTable(),
-                          ],
-                        ),
-                      )));
-            }));
+                            : addValidatorsTable(),
+                  ],
+                ),
+              ))));
   }
 
   Widget addLoadingIndicator() {
@@ -171,55 +215,103 @@ class _NetworkScreenState extends State<NetworkScreen> {
         ));
   }
 
-  Widget addHeader() {
+  Widget addHeaderTitle() {
     return Container(
-      margin: EdgeInsets.only(bottom: 40),
-      child: ResponsiveWidget.isLargeScreen(context)
-          ? Row(
+        child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
-          addHeaderTitle(),
-          addSearchInput(),
-        ],
-      )
-          : Column(
-        children: <Widget>[
-          addHeaderTitle(),
-          addSearchInput(),
+          ResponsiveWidget.isSmallScreen(context) ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                  margin: EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    Strings.validators,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+                  )),
+              SizedBox(height: 10),
+              Padding(padding: EdgeInsets.only(left: 30),
+                child: Row(children: <Widget>[
+                  InkWell(
+                      onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                      child: Icon(Icons.swap_horiz, color: KiraColors.white.withOpacity(0.8))),
+                  SizedBox(width: 10),
+                  InkWell(
+                    onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                    child: Container(
+                        child: Text(
+                          Strings.blocks,
+                          textAlign: TextAlign.left,
+                          style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                        )),
+                  )],
+                )),
+              SizedBox(height:30)
+            ],
+          ) : Row(
+            children: <Widget>[
+              Container(
+                  margin: EdgeInsets.only(bottom: 50),
+                  child: Text(
+                    Strings.validators,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+                  )),
+              SizedBox(width: 30),
+              InkWell(
+                  onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                  child: Icon(Icons.swap_horiz, color: KiraColors.white.withOpacity(0.8))),
+              SizedBox(width: 10),
+              InkWell(
+                onTap: () => Navigator.pushReplacementNamed(context, '/blocks'),
+                child: Container(
+                    child: Text(
+                  Strings.blocks,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                )),
+              ),
+            ],
+          ),
+          Container(
+            margin: EdgeInsets.only(right: 20),
+            child: isFiltering
+                ? InkWell(
+                onTap: () {
+                  this.setState(() {
+                    isFiltering = false;
+                    expandedTop = -1;
+                  });
+                },
+                child: Icon(Icons.close, color: KiraColors.white, size: 30))
+                : Tooltip(
+              message: Strings.validatorQuery,
+              waitDuration: Duration(milliseconds: 500),
+              decoration: BoxDecoration(color: KiraColors.purple1, borderRadius: BorderRadius.circular(4)),
+              verticalOffset: 20,
+              preferBelow: ResponsiveWidget.isSmallScreen(context),
+              margin: EdgeInsets.only(
+                  right: ResponsiveWidget.isSmallScreen(context)
+                      ? 20
+                      : ResponsiveWidget.isMediumScreen(context)
+                      ? 50
+                      : 110),
+              textStyle: TextStyle(color: KiraColors.white.withOpacity(0.8)),
+              child: InkWell(
+                onTap: () {
+                  this.setState(() {
+                    isFiltering = true;
+                    expandedTop = -1;
+                  });
+                },
+                child: Icon(Icons.search, color: KiraColors.white, size: 30),
+              ),
+            ),
+          ),
         ],
       ),
-    );
-  }
-
-  Widget addHeaderTitle() {
-    return Row(
-      children: <Widget>[
-        Container(
-            margin: EdgeInsets.only(bottom: 50),
-            child: Text(
-              Strings.validators,
-              textAlign: TextAlign.left,
-              style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
-            )),
-        SizedBox(width: 30),
-        InkWell(
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/blocks');
-            },
-            child: Icon(Icons.swap_horiz, color: KiraColors.white.withOpacity(0.8))),
-        SizedBox(width: 10),
-        InkWell(
-          onTap: () {
-            Navigator.pushReplacementNamed(context, '/blocks');
-          },
-          child: Container(
-              child: Text(
-                Strings.blocks,
-                textAlign: TextAlign.left,
-                style: TextStyle(color: KiraColors.white, fontSize: 20, fontWeight: FontWeight.w900),
-              )),
-        ),
-      ],
     );
   }
 
@@ -237,11 +329,8 @@ class _NetworkScreenState extends State<NetworkScreen> {
         onChanged: (String newText) {
           this.setState(() {
             query = newText.toLowerCase();
-            filteredValidators = validators.where((x) =>
-            x.moniker.toLowerCase().contains(query) || x.address.toLowerCase().contains(query))
-                .toList();
             expandedTop = -1;
-            validatorController.add(null);
+            validatorController.add(query);
           });
         },
         padding: EdgeInsets.only(bottom: 15),
@@ -258,130 +347,133 @@ class _NetworkScreenState extends State<NetworkScreen> {
 
   Widget addTableHeader() {
     return Container(
-        padding: EdgeInsets.all(5),
-        margin: EdgeInsets.only(right: 40, bottom: 20),
-        child: Row(
-            children: [
-            Expanded(
-            flex: 2,
-            child: InkWell(
-                onTap: () => this.setState(() {
-                  if (sortIndex == 3)
-                    isAscending = !isAscending;
-                  else {
-                    sortIndex = 3;
-                    isAscending = true;
-                  }
-                  expandedTop = -1;
-                  refreshTableSort();
-                }),
-                child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: sortIndex != 3
-                    ? [
-                    Text("Status",
-                        style: TextStyle(
-                            color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-                    ]
-                        : [
-                    Text("Status",
-                    style: TextStyle(
-                color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-            SizedBox(width: 5),
-            Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
-            ]))),
-    Expanded(
-    flex: ResponsiveWidget.isSmallScreen(context) ? 3 : 2,
-    child: InkWell(
-    onTap: () => this.setState(() {
-    if (sortIndex == 0)
-    isAscending = !isAscending;
-    else {
-    sortIndex = 0;
-    isAscending = true;
-    }
-    expandedTop = -1;
-    refreshTableSort();
-    }),
-    child: Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: sortIndex != 0
-    ? [
-    Text("Rank",
-    style:
-    TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-    ]
-        : [
-    Text("Rank",
-    style:
-    TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-    SizedBox(width: 5),
-    Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
-    ],
-    ))),
-    Expanded(
-    flex: 3,
-    child: InkWell(
-    onTap: () => this.setState(() {
-    if (sortIndex == 2)
-    isAscending = !isAscending;
-    else {
-    sortIndex = 2;
-    isAscending = true;
-    }
-    expandedTop = -1;
-    refreshTableSort();
-    }),
-    child: Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: sortIndex != 2
-    ? [
-    Text("Moniker",
-    style: TextStyle(
-    color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-    ]
-        : [
-    Text("Moniker",
-    style: TextStyle(
-    color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-    SizedBox(width: 5),
-    Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
-    ]))),
-    Expanded(
-    flex: ResponsiveWidget.isSmallScreen(context) ? 4 : 9,
-    child: Text("Validator Address",
-    textAlign: TextAlign.center,
-    style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold))),
-    Expanded(
-    flex: ResponsiveWidget.isSmallScreen(context) ? 3 : 2,
-    child: InkWell(
-    onTap: () => this.setState(() {
-    if (sortIndex == 4)
-    isAscending = !isAscending;
-    else {
-    sortIndex = 4;
-    isAscending = true;
-    }
-    expandedTop = -1;
-    refreshTableSort();
-    }),
-    child: Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: sortIndex != 4
-    ? [
-    Text("Favorite",
-    style: TextStyle(
-    color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-    ]
-        : [
-    Text("Favorite",
-    style: TextStyle(
-    color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
-    SizedBox(width: 5),
-    Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
-    ]))),
-    ],
-    ),
+      padding: EdgeInsets.all(5),
+      margin: EdgeInsets.only(top: 20, right: 40, bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+              flex: ResponsiveWidget.isSmallScreen(context) ? 3 : 2,
+              child: InkWell(
+                  onTap: () => this.setState(() {
+                        if (sortIndex == 3)
+                          isAscending = !isAscending;
+                        else {
+                          sortIndex = 3;
+                          isAscending = true;
+                        }
+                        expandedTop = -1;
+                        refreshTableSort();
+                      }),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: sortIndex != 3
+                          ? [
+                              Text("Status",
+                                  style: TextStyle(
+                                      color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                            ]
+                          : [
+                              Text("Status",
+                                  style: TextStyle(
+                                      color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              SizedBox(width: 5),
+                              Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
+                            ]))),
+          Expanded(
+              flex: ResponsiveWidget.isSmallScreen(context) ? 3 : 2,
+              child: InkWell(
+                  onTap: () => this.setState(() {
+                        if (sortIndex == 0)
+                          isAscending = !isAscending;
+                        else {
+                          sortIndex = 0;
+                          isAscending = true;
+                        }
+                        expandedTop = -1;
+                        refreshTableSort();
+                      }),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: sortIndex != 0
+                          ? [
+                              Text("Top",
+                                  style: TextStyle(
+                                      color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                            ]
+                          : [
+                              Text("Top",
+                                  style: TextStyle(
+                                      color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              SizedBox(width: 5),
+                              Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
+                            ]))),
+          Expanded(
+              flex: ResponsiveWidget.isSmallScreen(context) ? 6 : 3,
+              child: InkWell(
+                  onTap: () => this.setState(() {
+                        if (sortIndex == 2)
+                          isAscending = !isAscending;
+                        else {
+                          sortIndex = 2;
+                          isAscending = true;
+                        }
+                        expandedTop = -1;
+                        refreshTableSort();
+                      }),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: sortIndex != 2
+                          ? [
+                              Text("Moniker",
+                                  style: TextStyle(
+                                      color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                            ]
+                          : [
+                              Text("Moniker",
+                                  style: TextStyle(
+                                      color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              SizedBox(width: 5),
+                              Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward, color: KiraColors.white),
+                            ]))),
+          ResponsiveWidget.isSmallScreen(context) ? Container() :
+          Expanded(
+              flex: 9,
+              child: Text("Validator Address",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold))),
+          !isLoggedIn
+              ? Container()
+              : Expanded(
+                  flex: ResponsiveWidget.isSmallScreen(context) ? 3 : 2,
+                  child: InkWell(
+                      onTap: () => this.setState(() {
+                            if (sortIndex == 4)
+                              isAscending = !isAscending;
+                            else {
+                              sortIndex = 4;
+                              isAscending = true;
+                            }
+                            expandedTop = -1;
+                            refreshTableSort();
+                          }),
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: sortIndex != 4
+                              ? [
+                                  Text("Favorite",
+                                      style: TextStyle(
+                                          color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                                ]
+                              : [
+                                  Text("Favorite",
+                                      style: TextStyle(
+                                          color: KiraColors.kGrayColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                                  SizedBox(width: 5),
+                                  Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                                      color: KiraColors.white),
+                                ]))),
+        ],
+      ),
     );
   }
 
@@ -393,17 +485,16 @@ class _NetworkScreenState extends State<NetworkScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ValidatorsTable(
-              isFiltering: query.isNotEmpty,
-              totalPages: (networkService.totalCount / 5).ceil(),
-              totalValidators: validators,
-              validators: filteredValidators,
+              isLoggedIn: isLoggedIn,
+              page: page,
+              setPage: (newPage) => this.setState(() {
+                page = newPage;
+              }),
+              validators: validators,
               expandedTop: expandedTop,
               onChangeLikes: (top) {
                 var index = validators.indexWhere((element) => element.top == top);
                 if (index >= 0) {
-
-                  var currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-
                   BlocProvider.of<ValidatorBloc>(context)
                       .add(ToggleFavoriteAddress(validators[index].address, currentAccount.hexAddress));
                   this.setState(() {
@@ -420,20 +511,18 @@ class _NetworkScreenState extends State<NetworkScreen> {
         ));
   }
 
-  refreshTableSort() {
-    this.setState(() {
-      if (sortIndex == 0) {
-        filteredValidators.sort((a, b) => isAscending ? a.top.compareTo(b.top) : b.top.compareTo(a.top));
-      } else if (sortIndex == 2) {
-        filteredValidators
-            .sort((a, b) => isAscending ? a.moniker.compareTo(b.moniker) : b.moniker.compareTo(a.moniker));
-      } else if (sortIndex == 3) {
-        filteredValidators.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
-      } else if (sortIndex == 4) {
-        filteredValidators.sort((a, b) => !isAscending
-            ? a.isFavorite.toString().compareTo(b.isFavorite.toString())
-            : b.isFavorite.toString().compareTo(a.isFavorite.toString()));
-      }
-    });
+  void refreshTableSort() {
+    if (sortIndex == 0) {
+      validators.sort((a, b) => isAscending ? a.top.compareTo(b.top) : b.top.compareTo(a.top));
+    } else if (sortIndex == 2) {
+      validators.sort((a, b) => isAscending ? a.moniker.compareTo(b.moniker) : b.moniker.compareTo(a.moniker));
+    } else if (sortIndex == 3) {
+      validators.sort((a, b) => isAscending ? a.status.compareTo(b.status) : b.status.compareTo(a.status));
+    } else if (sortIndex == 4) {
+      validators.sort((a, b) => !isAscending
+          ? a.isFavorite.toString().compareTo(b.isFavorite.toString())
+          : b.isFavorite.toString().compareTo(a.isFavorite.toString()));
+    }
+    validatorController.add(null);
   }
 }

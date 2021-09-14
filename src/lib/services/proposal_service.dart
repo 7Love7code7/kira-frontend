@@ -2,17 +2,19 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:kira_auth/models/export.dart';
-import 'package:kira_auth/config.dart';
 import 'package:kira_auth/utils/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class ProposalService {
+  final _storageService = getIt<StorageService>();
   List<Proposal> proposals = [];
   int totalCount = 0;
   int lastOffset = 0;
 
   Future<void> getProposalsCount() async {
-    var apiUrl = await loadInterxURL();
-    var data = await http.get(apiUrl[0] + "/kira/gov/proposals?count_total=true",
+    var apiUrl = await _storageService.getLiveRpcUrl();
+    var data = await http.get(apiUrl[0] + "/api/kira/gov/proposals?count_total=true",
         headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
@@ -24,7 +26,7 @@ class ProposalService {
   Future<void> getProposals(bool loadNew, {String account = ''}) async {
     List<Proposal> proposalList = [];
 
-    var apiUrl = await loadInterxURL();
+    var apiUrl = await _storageService.getLiveRpcUrl();
     var offset, limit;
     if (loadNew) {
       offset = totalCount;
@@ -35,34 +37,52 @@ class ProposalService {
         await getProposalsCount();
         lastOffset = totalCount;
       }
-      offset = max(lastOffset - 20, 0);
+      offset = max(lastOffset - PAGE_COUNT, 0);
       limit = lastOffset - offset;
       lastOffset = offset;
     }
     if (limit == 0) return;
 
-    var data = await http.get(apiUrl[0] + "/kira/gov/proposals?offset=$offset&limit=$limit&count_total=true",
-        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
-
-    var bodyData = json.decode(data.body);
-    if (!bodyData.containsKey('proposals')) return;
-
-    var proposals = bodyData['proposals'];
-    for (int i = 0; i < proposals.length; i++) {
-      Proposal proposal = Proposal(
-        proposalId: proposals[i]['proposal_id'],
-        description: proposals[i]['description'],
-        submitTime: proposals[i]['submit_time'] != null ? DateTime.parse(proposals[i]['submit_time']) : null,
-        enactmentEndTime:
-            proposals[i]['enactment_end_time'] != null ? DateTime.parse(proposals[i]['enactment_end_time']) : null,
-        votingEndTime: proposals[i]['voting_end_time'] != null ? DateTime.parse(proposals[i]['voting_end_time']) : null,
-        result: proposals[i]['result'] ?? "VOTE_RESULT_UNKNOWN",
-        content: ProposalContent.parse(proposals[i]['content']),
-      );
-      proposal.voteability = await checkVoteability(proposal.proposalId, account);
+    var k = 0;
+    while (k < limit) {
+      if (!await _storageService.checkModelExists(ModelType.PROPOSAL, (offset + k).toString())) break;
+      var proposal = Proposal.fromJson(await _storageService.getModel(ModelType.PROPOSAL, (offset + k).toString()));
+      proposal.voteability = account.isEmpty ? Voteability.empty : await checkVoteability(proposal.proposalId, account);
       proposal.voteResults = await getVoteResult(proposal.proposalId);
       proposalList.add(proposal);
+      k++;
     }
+
+    if (k < limit) {
+      var data = await http.get(
+          apiUrl[0] + "/api/kira/gov/proposals?offset=${offset + k}&limit=${limit - k}&count_total=true",
+          headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+
+      var bodyData = json.decode(data.body);
+      if (!bodyData.containsKey('proposals')) return;
+
+      var proposals = bodyData['proposals'];
+      for (int i = 0; i < proposals.length; i++) {
+        Proposal proposal = Proposal.fromJson(proposals[i]);
+        if (account.isEmpty) proposal.voteability = Voteability.empty;
+        proposalList.add(proposal);
+        _storageService.storeModels(ModelType.PROPOSAL, proposal.proposalId, proposal.jsonString);
+      }
+    }
+
+    if (account.isNotEmpty) {
+      var voteabilities = proposalList.map((proposal) => checkVoteability(proposal.proposalId, account));
+      var responses = await Future.wait(voteabilities);
+      responses.asMap().forEach((index, response) {
+        proposalList[index].voteability = response;
+      });
+    }
+    var results = proposalList.map((proposal) => getVoteResult(proposal.proposalId));
+    var responses = await Future.wait(results);
+    responses.asMap().forEach((index, response) {
+      proposalList[index].voteResults = response;
+    });
+
     final now = DateTime.now();
     this.proposals.addAll(proposalList);
     var voteables = this.proposals.where((p) => p.votingEndTime.difference(now).inSeconds > 0).toList();
@@ -75,13 +95,14 @@ class ProposalService {
   }
 
   Future<Voteability> checkVoteability(String proposalId, String account) async {
-    var apiUrl = await loadInterxURL();
-    var data = await http.get(apiUrl[0] + "/kira/gov/voters/$proposalId",
-        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var apiUrl = await _storageService.getLiveRpcUrl();
+    var data = await http
+        .get(apiUrl[0] + "/api/kira/gov/voters/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     var actors = bodyData as List<dynamic>;
-    var selfActor = actors.firstWhere((voter) => (voter as Map<String, dynamic>)['address'] == account, orElse: () => null);
+    var selfActor =
+        actors.firstWhere((voter) => (voter as Map<String, dynamic>)['address'] == account, orElse: () => null);
     return parse(selfActor, actors.length);
   }
 
@@ -98,13 +119,14 @@ class ProposalService {
     }
     var whitelist = (jsonData['permissions']['whitelist'] as List<dynamic>).map((e) => e.toString()).toList();
     var blacklist = (jsonData['permissions']['blacklist'] as List<dynamic>).map((e) => e.toString()).toList();
-    return Voteability(voteOptions: options, whitelistPermissions: whitelist, blacklistPermissions: blacklist, count: count);
+    return Voteability(
+        voteOptions: options, whitelistPermissions: whitelist, blacklistPermissions: blacklist, count: count);
   }
 
   Future<Map> getVoteResult(String proposalId) async {
-    var apiUrl = await loadInterxURL();
-    var data = await http.get(apiUrl[0] + "/kira/gov/votes/$proposalId",
-        headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+    var apiUrl = await _storageService.getLiveRpcUrl();
+    var data = await http
+        .get(apiUrl[0] + "/api/kira/gov/votes/$proposalId", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     var bodyData = json.decode(data.body);
     var votes = bodyData as List<dynamic>;

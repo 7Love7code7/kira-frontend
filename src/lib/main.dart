@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:google_fonts/google_fonts.dart';
-import 'package:kira_auth/data/account_repository.dart';
-import 'package:kira_auth/data/token_repository.dart';
 import 'package:kira_auth/data/validator_repository.dart';
 import 'package:kira_auth/router.dart';
 import 'package:kira_auth/utils/colors.dart';
 import 'package:kira_auth/blocs/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 Future main() async {
+  setupGetIt();
   runApp(MyApp());
 }
 
@@ -22,9 +22,7 @@ class MyApp extends StatelessWidget {
 
     return MultiBlocProvider(
         providers: [
-          BlocProvider<AccountBloc>(create: (context) => AccountBloc(IAccountRepository())),
           BlocProvider<NetworkBloc>(create: (context) => NetworkBloc()),
-          BlocProvider<TokenBloc>(create: (context) => TokenBloc(ITokenRepository())),
           BlocProvider<ValidatorBloc>(create: (context) => ValidatorBloc(IValidatorRepository())),
         ],
         child: MaterialApp(

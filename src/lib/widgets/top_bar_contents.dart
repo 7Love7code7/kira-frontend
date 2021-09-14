@@ -1,12 +1,12 @@
 import 'dart:ui';
-// import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/utils/export.dart';
-import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/widgets/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class TopBarContents extends StatefulWidget {
   final double opacity;
@@ -21,14 +21,15 @@ class TopBarContents extends StatefulWidget {
 }
 
 class _TopBarContentsState extends State<TopBarContents> {
-  StatusService statusService = StatusService();
-  final List _isHovering = [false, false, false, false, false, false, false, false, false, false];
+  final _storageService = getIt<StorageService>();
 
-  final List _NotSearched = [true, false, false, true, true, true];
+  final List _isHovering = [false, false, false, false, false, false, false, false, false, false];
+  final List _notSearched = [true, false, false, true, true, true];
 
   bool _isProcessing = false;
-
-  String networkId = Strings.noAvailableNetworks;
+  int selectedIndex = 0;
+  String rpcUrl;
+  String navParam = "";
 
   @override
   void initState() {
@@ -36,27 +37,30 @@ class _TopBarContentsState extends State<TopBarContents> {
     getNodeStatus();
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    String lastSearchedAccount = await _storageService.getLastSearchedAccount();
+    if (lastSearchedAccount.isNotEmpty) navParam = "&addr=" + lastSearchedAccount;
+    var topbarIndex = await _storageService.getTopbarIndex();
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          networkId = statusService.nodeInfo.network;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        }
+        selectedIndex = topbarIndex;
       });
     }
   }
 
-  List<Widget> navItems() {
+  List<Widget> navItems(String nodeAddress) {
     List<Widget> items = [];
 
     for (int i = 0; i < 6; i++) {
-      if (!widget._loggedIn ? _NotSearched[i] : true)
+      if (!widget._loggedIn ? _notSearched[i] : true)
         items.add(Container(
-          margin: EdgeInsets.only(left: 20, right: 20, top: 10),
+          margin: EdgeInsets.only(left: 30, right: 30, top: 10),
           child: InkWell(
             onHover: (value) {
               setState(() {
@@ -64,9 +68,11 @@ class _TopBarContentsState extends State<TopBarContents> {
               });
             },
             onTap: () {
+              _storageService.setTopbarIndex(i);
               switch (i) {
-                case 0: // Acount
-                  Navigator.pushReplacementNamed(context, '/account');
+                case 0: // Account
+                  Navigator.pushReplacementNamed(
+                      context, '/account' + (!widget._loggedIn ? '?rpc=$nodeAddress$navParam' : ''));
                   break;
                 case 1: // Deposit
                   Navigator.pushReplacementNamed(context, '/deposit');
@@ -75,16 +81,15 @@ class _TopBarContentsState extends State<TopBarContents> {
                   Navigator.pushReplacementNamed(context, '/withdraw');
                   break;
                 case 3: // Network
-                  Navigator.pushReplacementNamed(context, '/network');
+                  Navigator.pushReplacementNamed(
+                      context, '/network' + (!widget._loggedIn ? '?rpc=$nodeAddress' : ''));
                   break;
                 case 4: // Proposals
-                  Navigator.pushReplacementNamed(context, '/proposals');
+                  Navigator.pushReplacementNamed(
+                      context, '/proposals' + (!widget._loggedIn ? '?rpc=$nodeAddress' : ''));
                   break;
                 case 5: // Settings
-                  // BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
-                  // removePassword();
-                  // setInterxRPCUrl("");
-                  Navigator.pushReplacementNamed(context, '/settings');
+                  Navigator.pushReplacementNamed(context, widget._loggedIn ? '/settings' : '/login');
                   break;
               }
             },
@@ -96,9 +101,8 @@ class _TopBarContentsState extends State<TopBarContents> {
                   Text(
                     !widget._loggedIn ? Strings.navItemTitlesExplorer[i] : Strings.navItemTitles[i],
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: _isHovering[i] ? KiraColors.kYellowColor : KiraColors.kGrayColor,
+                      fontSize: 15,
+                      color: _isHovering[i] || i == selectedIndex ? KiraColors.kYellowColor : KiraColors.kGrayColor,
                     ),
                   ),
                   SizedBox(height: 5),
@@ -130,9 +134,14 @@ class _TopBarContentsState extends State<TopBarContents> {
         textAlign: TextAlign.center,
       ),
       onPressed: () {
+        final _statusService = getIt<StatusService>();
+        _statusService.disconnect();
+        _storageService.setNetworkHealth(false);
+        _storageService.setNodeStatusData("");
+        _storageService.removePassword();
+        _storageService.setInterxRPCUrl("");
+        _storageService.setLiveRpcUrl("", "");
         BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
-        removePassword();
-        setInterxRPCUrl("");
         Navigator.pushReplacementNamed(context, '/login');
       },
     );
@@ -240,7 +249,7 @@ class _TopBarContentsState extends State<TopBarContents> {
                 ? Expanded(
                     child: Center(
                         child: Wrap(
-                      children: navItems(),
+                      children: navItems(nodeAddress),
                     )),
                   )
                 : Expanded(child: SizedBox(width: 500)),
@@ -256,7 +265,7 @@ class _TopBarContentsState extends State<TopBarContents> {
               child: Row(
                 children: [
                   Text(
-                    networkId,
+                    networkId == null ? Strings.noAvailableNetworks : networkId,
                     style: TextStyle(
                         fontFamily: 'Mulish', color: Colors.white.withOpacity(0.5), fontSize: 15, letterSpacing: 1),
                   ),
@@ -301,13 +310,20 @@ class _TopBarContentsState extends State<TopBarContents> {
                       // hoverColor: KiraColors.purple1,
                       // highlightColor: KiraColors.purple2,
                       onPressed: () {
-                        if (widget._loggedIn) {
-                          removePassword();
-                          Navigator.pushReplacementNamed(context, '/');
+                        if (widget._loggedIn == true) {
+                          final _accountService = getIt<AccountService>();
+                          _accountService.setCurrentAccount(null);
                         } else {
-                          var nodeAddress = BlocProvider.of<NetworkBloc>(context).state.nodeAddress;
-                          BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, nodeAddress));
+                          final _statusService = getIt<StatusService>();
+                          _statusService.disconnect();
+                          _storageService.setNetworkHealth(false);
+                          _storageService.setNodeStatusData("");
+                          _storageService.removePassword();
+                          _storageService.setInterxRPCUrl("");
+                          _storageService.setLiveRpcUrl("", "");
+                          BlocProvider.of<NetworkBloc>(context).add(SetNetworkInfo(Strings.customNetwork, ""));
                         }
+                        Navigator.pushReplacementNamed(context, '/login');
                       },
                       // shape: RoundedRectangleBorder(
                       //     borderRadius: BorderRadius.circular(5), side: BorderSide(color: KiraColors.buttonBorder)),

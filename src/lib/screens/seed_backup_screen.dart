@@ -12,6 +12,7 @@ import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class SeedBackupScreen extends StatefulWidget {
   final String password;
@@ -22,7 +23,6 @@ class SeedBackupScreen extends StatefulWidget {
 }
 
 class _SeedBackupScreenState extends State<SeedBackupScreen> {
-  StatusService statusService = StatusService();
   Account currentAccount;
   String mnemonic;
   bool seedCopied = false, exportEnabled = false;
@@ -35,18 +35,9 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
   @override
   void initState() {
     super.initState();
-    // removeCachedAccount();
-    getNodeStatus();
 
-    if (mounted) {
-      setState(() {
-        if (BlocProvider.of<AccountBloc>(context).state.currentAccount != null) {
-          currentAccount = BlocProvider.of<AccountBloc>(context).state.currentAccount;
-          mnemonic = decryptAESCryptoJS(currentAccount.encryptedMnemonic, currentAccount.secretKey);
-          wordList = mnemonic.split(' ');
-        }
-      });
-    }
+    getNodeStatus();
+    getCurrentAccount();
 
     seedPhraseNode = FocusNode();
     seedPhraseController = TextEditingController();
@@ -58,18 +49,37 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
     super.dispose();
   }
 
-  void getNodeStatus() async {
-    await statusService.getNodeStatus();
+  getCurrentAccount() async {
+    final _accountService = getIt<AccountService>();
+    final _storageService = getIt<StorageService>();
+    Account curAccount = _accountService.currentAccount;
+
+    if (_accountService.currentAccount == null) {
+      curAccount = await _storageService.getCurrentAccount();
+    }
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
+        currentAccount = curAccount;
+        mnemonic = decryptAESCryptoJS(curAccount.encryptedMnemonic, curAccount.secretKey);
+        wordList = mnemonic.split(' ');
+      });
+    }
+  }
+
+  void getNodeStatus() async {
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
+
+    if (mounted) {
+      setState(() {
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
       });
     }
   }
@@ -80,33 +90,29 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
 
     return Scaffold(
         resizeToAvoidBottomInset: false,
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                isNetworkHealthy: isNetworkHealthy,
-                childWidget: Container(
-                    alignment: Alignment.center,
-                    margin: EdgeInsets.only(top: 50, bottom: 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 600),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            addHeaderTitle(),
-                            addMnemonicDescription(),
-                            addMnemonic(),
-                            addCopyButton(),
-                            addQrCode(),
-                            addPublicAddress(),
-                            addExportButton(),
-                            ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
-                          ],
-                        ))),
-              );
-            }));
+        body: HeaderWrapper(
+          isNetworkHealthy: isNetworkHealthy,
+          childWidget: Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.only(top: 50, bottom: 50),
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      addHeaderTitle(),
+                      addMnemonicDescription(),
+                      addMnemonic(),
+                      addCopyButton(),
+                      addQrCode(),
+                      addPublicAddress(),
+                      addExportButton(),
+                      ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
+                    ],
+                  ))),
+        ));
   }
 
   Widget addHeaderTitle() {
@@ -272,10 +278,10 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
                     text: Strings.createNewAccount,
                     height: 60,
                     style: 2,
-                    onPressed: () {
+                    onPressed: () async {
                       if (exportEnabled == false) {
-                        setAccountData(currentAccount.toJsonString());
-                        BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
+                        final _accountService = getIt<AccountService>();
+                        await _accountService.setCurrentAccount(currentAccount);
                         BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
                         setState(() {
                           exportEnabled = true;
@@ -322,11 +328,13 @@ class _SeedBackupScreenState extends State<SeedBackupScreen> {
                     width: 250,
                     height: 65,
                     style: 2,
-                    onPressed: () {
+                    onPressed: () async {
                       if (exportEnabled == false) {
-                        setAccountData(currentAccount.toJsonString());
-                        BlocProvider.of<AccountBloc>(context).add(SetCurrentAccount(currentAccount));
+                        final _accountService = getIt<AccountService>();
+                        await _accountService.setCurrentAccount(currentAccount);
+
                         BlocProvider.of<ValidatorBloc>(context).add(GetCachedValidators(currentAccount.hexAddress));
+
                         setState(() {
                           exportEnabled = true;
                         });

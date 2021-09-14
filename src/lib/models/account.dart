@@ -229,4 +229,6 @@ class Account {
   factory Account.fromJson(Map<String, dynamic> json) => _$AccountFromJson(json);
 
   Map<String, dynamic> toJson() => _$AccountToJson(this);
+
+  String get getReducedBechAddress => bech32Address.replaceRange(7, bech32Address.length - 7, '....');
 }

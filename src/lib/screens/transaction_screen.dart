@@ -1,12 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/widgets/export.dart';
-import 'package:kira_auth/services/export.dart';
-import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/services/export.dart';
+import 'package:kira_auth/service_manager.dart';
 
 class TransactionScreen extends StatefulWidget {
   final String txHash;
@@ -17,8 +16,8 @@ class TransactionScreen extends StatefulWidget {
 }
 
 class _TransactionScreenState extends State<TransactionScreen> {
-  NetworkService networkService = NetworkService();
-  StatusService statusService = StatusService();
+  final _storageService = getIt<StorageService>();
+  final _networkService = getIt<NetworkService>();
 
   BlockTransaction transaction;
   bool isNetworkHealthy = false;
@@ -26,75 +25,73 @@ class _TransactionScreenState extends State<TransactionScreen> {
   @override
   void initState() {
     super.initState();
+
     getNodeStatus();
     getTransaction();
   }
 
   void getNodeStatus() async {
-    await statusService.getNodeStatus();
+    final _statusService = getIt<StatusService>();
+    bool networkHealth = _statusService.isNetworkHealthy;
+    NodeInfo nodeInfo = _statusService.nodeInfo;
+
+    if (nodeInfo == null) {
+      final _storageService = getIt<StorageService>();
+      nodeInfo = await _storageService.getNodeStatusData("NODE_INFO");
+    }
 
     if (mounted) {
       setState(() {
-        if (statusService.nodeInfo != null && statusService.nodeInfo.network.isNotEmpty) {
-          isNetworkHealthy = statusService.isNetworkHealthy;
-          BlocProvider.of<NetworkBloc>(context)
-              .add(SetNetworkInfo(statusService.nodeInfo.network, statusService.rpcUrl));
-        } else {
-          isNetworkHealthy = false;
-        }
+        isNetworkHealthy = nodeInfo == null ? false : networkHealth;
       });
     }
   }
 
   void getTransaction() async {
-    if ((widget.txHash ?? '').isNotEmpty)
-      await networkService.searchTransaction(widget.txHash);
+    if ((widget.txHash ?? '').isNotEmpty) await _networkService.searchTransaction(widget.txHash);
     if (mounted) {
       setState(() {
-        transaction = networkService.transaction;
+        transaction = _networkService.transaction;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    checkPasswordExpired().then((success) {
+    _storageService.checkPasswordExpired().then((success) {
       if (success) {
         Navigator.pushReplacementNamed(context, '/login');
       }
     });
 
     return Scaffold(
-        body: BlocConsumer<AccountBloc, AccountState>(
-            listener: (context, state) {},
-            builder: (context, state) {
-              return HeaderWrapper(
-                  isNetworkHealthy: isNetworkHealthy,
-                  childWidget: Container(
-                      alignment: Alignment.center,
-                      margin: EdgeInsets.only(top: 50, bottom: 50),
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 1200),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            Container(
-                                margin: EdgeInsets.only(bottom: 40),
-                                child: Text(
-                                  Strings.txDetails,
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
-                                )
-                            ),
-                            transaction != null ? addTransactionDetails() : Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                )),
-                          ],
-                        ),
-                      )));
-            }));
+      body: HeaderWrapper(
+        isNetworkHealthy: isNetworkHealthy,
+        childWidget: Container(
+            alignment: Alignment.center,
+            margin: EdgeInsets.symmetric(vertical: ResponsiveWidget.isSmallScreen(context) ? 10 : 50),
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Container(
+                      margin: EdgeInsets.only(bottom: 40),
+                      child: Text(
+                        Strings.txDetails,
+                        textAlign: TextAlign.left,
+                        style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
+                      )),
+                  transaction != null
+                      ? addTransactionDetails()
+                      : Center(
+                          child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        )),
+                ],
+              ),
+            ))));
   }
 
   Widget addTransactionDetails() {
@@ -126,8 +123,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           },
                           child: Text(transaction.getHash,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))
-                      ))
+                              style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14))))
                 ],
               ),
               SizedBox(height: 10),
@@ -144,7 +140,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   SizedBox(width: 20),
                   Container(
                       padding: EdgeInsets.only(top: 4, left: 8, right: 8, bottom: 4),
-                      child: Text(transaction.status, style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16)),
+                      child: Text(transaction.status,
+                          style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16)),
                       decoration: BoxDecoration(
                           color: KiraColors.purple1.withOpacity(0.8), borderRadius: BorderRadius.circular(4)))
                 ],
@@ -184,39 +181,43 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   )
                 ],
               ),
-              ...details.keys.map((key) =>
-                  Column(children: [
-                    SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: fieldWidth,
-                          child: Text(key,
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                  color: KiraColors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold)),
+              ...details.keys
+                  .map((key) => Column(children: [
+                        SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: fieldWidth,
+                              child: Text(key,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                      color: KiraColors.white.withOpacity(0.8),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                            SizedBox(width: 20),
+                            Flexible(
+                                child: details[key].isCopyable
+                                    ? InkWell(
+                                        onTap: () {
+                                          copyText(details[key].value);
+                                          showToast(details[key].toast);
+                                        },
+                                        child: Text(
+                                          details[key].value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14),
+                                        ))
+                                    : Text(
+                                        details[key].value,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14),
+                                      ))
+                          ],
                         ),
-                        SizedBox(width: 20),
-                        Flexible(
-                            child: details[key].isCopyable ? InkWell(
-                                onTap: () {
-                                  copyText(details[key].value);
-                                  showToast(details[key].toast);
-                                },
-                                child: Text(details[key].value,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14),
-                                ))
-                                : Text(details[key].value,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 14),
-                            )
-                        )
-                      ],
-                    ),
-                  ])
-              ).toList(),
+                      ]))
+                  .toList(),
             ],
           ),
         ));

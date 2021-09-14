@@ -1,8 +1,9 @@
+import 'dart:convert';
+
 import 'package:intl/intl.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:date_time_format/date_time_format.dart';
 import 'package:kira_auth/models/export.dart';
-import 'package:kira_auth/services/gravatar_service.dart';
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class Block {
@@ -21,30 +22,31 @@ class Block {
   final DateTime time;
   final String validatorsHash;
   final int txAmount;
+  final String jsonString;
   Validator validator;
 
   String get getHash => '0x$hash';
   String get getReducedHash => '0x$hash'.replaceRange(7, hash.length - 3, '....');
-  String get getProposer => validator != null ? validator.moniker : "";
-  String get getProposerIcon => GravatarService().getIdenticon(validator != null ? validator.address : "");
+  String get getProposer => validator != null ? validator.moniker : validator.address;
 
   Block(
       {this.blockSize = 0,
-        this.hash = "",
-        this.appHash = "",
-        this.chainId = "",
-        this.consensusHash = "",
-        this.dataHash = "",
-        this.evidenceHash = "",
-        this.height = 0,
-        this.lastCommitHash = "",
-        this.lastResultsHash = "",
-        this.validator,
-        this.nextValidatorsHash = "",
-        this.proposerAddress = "",
-        this.time,
-        this.validatorsHash = "",
-        this.txAmount = 0}) {
+      this.hash = "",
+      this.appHash = "",
+      this.chainId = "",
+      this.consensusHash = "",
+      this.dataHash = "",
+      this.evidenceHash = "",
+      this.height = 0,
+      this.lastCommitHash = "",
+      this.lastResultsHash = "",
+      this.validator,
+      this.nextValidatorsHash = "",
+      this.proposerAddress = "",
+      this.time,
+      this.validatorsHash = "",
+      this.txAmount = 0,
+      this.jsonString = ""}) {
     assert(this.blockSize != null ||
         this.hash != null ||
         this.appHash != null ||
@@ -83,5 +85,27 @@ class Block {
       if (i < maxDigitIndex && (maxDigitIndex - i) % 3 == 0) result.write(',');
     }
     return result.toString();
+  }
+
+  static Block fromJson(Map<String, dynamic> data) {
+    var header = data['header'];
+    return Block(
+      blockSize: int.parse(data['block_size']),
+      txAmount: int.parse(data['num_txs']),
+      hash: data['block_id']['hash'],
+      appHash: header['app_hash'],
+      chainId: header['chain_id'],
+      consensusHash: header['consensus_hash'],
+      dataHash: header['data_hash'],
+      evidenceHash: header['evidence_hash'],
+      height: int.parse(header['height']),
+      lastCommitHash: header['last_commit_hash'],
+      lastResultsHash: header['last_results_hash'],
+      nextValidatorsHash: header['next_validators_hash'],
+      proposerAddress: header['proposer_address'],
+      validatorsHash: header['validators_hash'],
+      time: DateTime.parse(header['time'] ?? DateTime.now().toString()),
+      jsonString: jsonEncode(data),
+    );
   }
 }
