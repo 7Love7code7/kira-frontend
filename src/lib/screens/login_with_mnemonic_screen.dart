@@ -5,10 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:kira_auth/utils/export.dart';
 import 'package:kira_auth/models/export.dart';
+import 'package:kira_auth/webcam/qr_code_scanner_web.dart';
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginWithMnemonicScreen extends StatefulWidget {
   @override
@@ -19,6 +21,7 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
   AccountService _accountService = getIt<AccountService>();
   String mnemonicError = "";
   bool isNetworkHealthy = false;
+  bool saifuQR = false;
 
   FocusNode mnemonicFocusNode;
   TextEditingController mnemonicController;
@@ -74,7 +77,9 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
                       addDescription(),
                       addMnemonic(),
                       ResponsiveWidget.isSmallScreen(context) ? addButtonsSmall() : addButtonsBig(),
-                      ResponsiveWidget.isSmallScreen(context) ? SizedBox(height: 20) : SizedBox(height: 150),
+                      ResponsiveWidget.isSmallScreen(context)
+                          ? SizedBox(height: 20)
+                          : SizedBox(height: 150),
                     ],
                   )),
             )));
@@ -107,29 +112,53 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppTextField(
-          hintText: Strings.mnemonicWords,
-          labelText: Strings.mnemonicWords,
-          focusNode: mnemonicFocusNode,
-          controller: mnemonicController,
-          textInputAction: TextInputAction.done,
-          maxLines: 1,
-          autocorrect: false,
-          keyboardType: TextInputType.text,
-          textAlign: TextAlign.left,
-          onChanged: (String text) {
-            if (text == '') {
-              setState(() {
-                mnemonicError = "";
-              });
-            }
-          },
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 18.0,
-            color: KiraColors.white,
-            fontFamily: 'NunitoSans',
-          ),
+        Stack(
+          children: [
+            AppTextField(
+              hintText: Strings.mnemonicWords,
+              labelText: Strings.mnemonicWords,
+              focusNode: mnemonicFocusNode,
+              controller: mnemonicController,
+              textInputAction: TextInputAction.done,
+              maxLines: 1,
+              autocorrect: false,
+              keyboardType: TextInputType.text,
+              textAlign: TextAlign.left,
+              onChanged: (String text) {
+                if (text == '') {
+                  setState(() {
+                    mnemonicError = "";
+                  });
+                }
+              },
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18.0,
+                color: KiraColors.white,
+                fontFamily: 'NunitoSans',
+              ),
+            ),
+            if (saifuQR == true)
+              Positioned(
+                top: 0,
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.qr_code_scanner,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        showQRScanner();
+                      },
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         if (mnemonicError.isNotEmpty) SizedBox(height: 15),
         if (mnemonicError.isNotEmpty)
@@ -147,6 +176,156 @@ class _LoginWithMnemonicScreenState extends State<LoginWithMnemonicScreen> {
         SizedBox(height: 30),
       ],
     );
+  }
+
+  showQRScanner() {
+    showDialog(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (BuildContext context) {
+          return AlertDialog(
+              elevation: 0.0,
+              backgroundColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10.0))),
+              content: Container(
+                  width: 350,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          color: Color.fromRGBO(0, 26, 69, 1),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 20),
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        "Scan Mnemonic",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  color: Colors.white,
+                                  child: SizedBox(
+                                    width: 350,
+                                    child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: [],
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.all(30),
+                                            child: ConstrainedBox(
+                                              constraints: BoxConstraints(maxHeight: 350),
+                                              child: QrCodeCameraWeb(
+                                                fit: BoxFit.cover,
+                                                qrCodeCallback: (scanData) async {
+                                                  if (mounted) {
+                                                    mnemonicController.text = scanData;
+                                                    Navigator.popUntil(context,
+                                                        ModalRoute.withName('/login-mnemonic'));
+                                                  }
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          Column(
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                Padding(
+                                                  padding: const EdgeInsets.all(20),
+                                                  child: Column(
+                                                    children: [
+                                                      Text(
+                                                        "Don't have Saifu wallet app?",
+                                                        textAlign: TextAlign.center,
+                                                        style:
+                                                            TextStyle(fontWeight: FontWeight.bold),
+                                                      ),
+                                                      Container(
+                                                        height: 75,
+                                                        width: 200,
+                                                        padding: EdgeInsets.all(0),
+                                                        decoration: BoxDecoration(
+                                                          image: DecorationImage(
+                                                              image: AssetImage(
+                                                                  '/images/app_store.png'),
+                                                              fit: BoxFit.contain),
+                                                        ),
+                                                        child: new TextButton(
+                                                            onPressed: () async {
+                                                              if (await canLaunch(
+                                                                  "https://play.google.com/store")) {
+                                                                await launch(
+                                                                    "https://play.google.com/store");
+                                                              } else {
+                                                                throw 'Could not launch null';
+                                                              }
+                                                            },
+                                                            style: ButtonStyle(
+                                                              overlayColor:
+                                                                  MaterialStateColor.resolveWith(
+                                                                      (states) =>
+                                                                          Colors.transparent),
+                                                            ),
+                                                            child: null),
+                                                      ),
+                                                      SizedBox(
+                                                        height: 5,
+                                                      ),
+                                                      Container(
+                                                        height: 75,
+                                                        width: 200,
+                                                        decoration: BoxDecoration(
+                                                          image: DecorationImage(
+                                                            image: AssetImage(
+                                                                '/images/google_store.png'),
+                                                          ),
+                                                        ),
+                                                        child: new TextButton(
+                                                            onPressed: () async {
+                                                              if (await canLaunch(
+                                                                  "https://play.google.com/store")) {
+                                                                await launch(
+                                                                    "https://play.google.com/store");
+                                                              } else {
+                                                                throw 'Could not launch null';
+                                                              }
+                                                            },
+                                                            style: ButtonStyle(
+                                                              overlayColor:
+                                                                  MaterialStateColor.resolveWith(
+                                                                      (states) =>
+                                                                          Colors.transparent),
+                                                            ),
+                                                            child: null),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ])
+                                        ]),
+                                  ),
+                                )
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )));
+        });
   }
 
   void onLogin() async {

@@ -3,12 +3,15 @@ import 'dart:html' as html;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter/material.dart';
+
 import 'package:kira_auth/utils/export.dart';
+
 import 'package:kira_auth/widgets/export.dart';
 import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/blocs/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
+import 'package:kira_auth/widgets/qrcode_scanner_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -16,10 +19,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  int i = 1;
   List<String> networkIds = [Strings.customNetwork];
   String networkId = Strings.customNetwork;
   String testedRpcUrl = "";
   bool isLoading = false, isHover = false, isNetworkHealthy = false, isRpcError = false;
+  bool saifuQR = false;
 
   HeaderWrapper headerWrapper;
   FocusNode rpcUrlNode;
@@ -133,10 +138,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: <Widget>[
                       addHeaderTitle(),
                       if (isNetworkHealthy == false) addNetworks(context),
-                      if (isNetworkHealthy == false && networkId == Strings.customNetwork) addCustomRPC(),
+                      if (isNetworkHealthy == false && networkId == Strings.customNetwork)
+                        addCustomRPC(),
                       if (isLoading == true) addLoadingIndicator(),
                       // addErrorMessage(),
-                      if (networkId == Strings.customNetwork && isNetworkHealthy == false && isLoading == false)
+                      if (networkId == Strings.customNetwork &&
+                          isNetworkHealthy == false &&
+                          isLoading == false)
                         addConnectButton(context),
                       isNetworkHealthy == true && isLoading == false
                           ? Column(
@@ -175,20 +183,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   "Node with address " + testedRpcUrl + " could not be reached",
                   textAlign: TextAlign.left,
-                  style: TextStyle(color: KiraColors.danger, fontSize: 20, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                      color: KiraColors.danger, fontSize: 20, fontWeight: FontWeight.w900),
                 ),
               SizedBox(height: 20),
               Text(
                 connected ? Strings.selectLoginOption : Strings.selectFullNode,
                 textAlign: TextAlign.left,
-                style: TextStyle(color: KiraColors.green3, fontSize: 20, fontWeight: FontWeight.w900),
+                style:
+                    TextStyle(color: KiraColors.green3, fontSize: 20, fontWeight: FontWeight.w900),
               ),
               if (!connected) SizedBox(height: 15),
               if (!connected)
                 Text(
                   Strings.requireSSL,
                   textAlign: TextAlign.left,
-                  style: TextStyle(color: KiraColors.white.withOpacity(0.6), fontSize: 15, fontWeight: FontWeight.w300),
+                  style: TextStyle(
+                      color: KiraColors.white.withOpacity(0.6),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w300),
                 )
             ]));
   }
@@ -209,7 +222,8 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Container(
                   padding: EdgeInsets.only(top: 10, left: 15, bottom: 0),
-                  child: Text(Strings.availableNetworks, style: TextStyle(color: KiraColors.kGrayColor, fontSize: 12)),
+                  child: Text(Strings.availableNetworks,
+                      style: TextStyle(color: KiraColors.kGrayColor, fontSize: 12)),
                 ),
                 ButtonTheme(
                   alignedDropdown: true,
@@ -237,7 +251,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Container(
                               height: 25,
                               alignment: Alignment.topCenter,
-                              child: Text(value, style: TextStyle(color: KiraColors.white, fontSize: 18))),
+                              child: Text(value,
+                                  style: TextStyle(color: KiraColors.white, fontSize: 18))),
                         );
                       }).toList()),
                 ),
@@ -322,19 +337,63 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget addLoginWithKeyFileButton(isBigScreen) {
-    return CustomButton(
-      key: Key(Strings.loginWithKeyFile),
-      text: Strings.loginWithKeyFile,
-      width: isBigScreen ? 220 : null,
-      height: 60,
-      style: 2,
-      onPressed: () {
-        String customInterxRPCUrl = rpcUrlController.text;
-        if (customInterxRPCUrl.length > 0) {
-          _storageService.setInterxRPCUrl(customInterxRPCUrl);
-        }
-        Navigator.pushReplacementNamed(context, '/login-keyfile');
-      },
+    return Stack(
+      children: [
+        CustomButton(
+          key: Key(Strings.loginWithKeyFile),
+          text: Strings.loginWithKeyFile,
+          width: isBigScreen ? 220 : null,
+          height: 60,
+          style: 2,
+          onPressed: () {
+            String customInterxRPCUrl = rpcUrlController.text;
+            if (customInterxRPCUrl.length > 0) {
+              _storageService.setInterxRPCUrl(customInterxRPCUrl);
+            }
+            Navigator.pushReplacementNamed(context, '/login-keyfile');
+          },
+        ),
+        if (saifuQR == true)
+          Positioned(
+            top: 0,
+            right: 0,
+            child: ClipRRect(
+                borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(50),
+                    bottomLeft: Radius.circular(50),
+                    bottomRight: Radius.circular(50)),
+                child: Container(
+                  color: Color.fromRGBO(31, 23, 76, 1),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.qr_code,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      showDialog(
+                          context: context,
+                          barrierColor: Colors.black54,
+                          builder: (BuildContext context) {
+                            return QrScannerDialog(
+                              title: "Login in with Saifu",
+                              qrCodeFunction: () => {
+                                //TODO: Implement SAIFU Accounts (Explorer Account (public address)  with Saifu Signer on Withdrawing)
+
+                                Navigator.popUntil(
+                                  context,
+                                  ModalRoute.withName(
+                                    '/login',
+                                  ),
+                                )
+                              },
+                            );
+                          });
+                    },
+                  ),
+                )),
+          )
+      ],
     );
   }
 
