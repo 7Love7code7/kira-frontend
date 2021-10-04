@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'package:kira_auth/utils/export.dart';
@@ -21,6 +24,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
   final _networkService = getIt<NetworkService>();
 
   List<Validator> validators = [];
+  List<Marker> markers = [];
   String query = "";
   bool moreLoading = false;
   Account currentAccount;
@@ -32,6 +36,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
   bool isAscending = true;
   bool isNetworkHealthy = false;
   int page = 1;
+  bool visShowing = false;
   StreamController validatorController = StreamController.broadcast();
 
   bool isLoggedIn = false;
@@ -39,10 +44,16 @@ class _NetworkScreenState extends State<NetworkScreen> {
   List<String> networkIds = [Strings.customNetwork];
   String networkId = Strings.customNetwork;
   Timer timer;
+  MapController _mapController;
 
   @override
   void initState() {
     super.initState();
+
+    // create instance only not exists another reference
+    if(_mapController == null) {
+      _mapController = MapController();
+    }
 
     final _storageService = getIt<StorageService>();
     _storageService.setTopbarIndex(3);
@@ -99,10 +110,23 @@ class _NetworkScreenState extends State<NetworkScreen> {
     setState(() {
       moreLoading = true;
     });
+    await _networkService.getNodes();
     await _networkService.getValidators();
     if (mounted) {
       setState(() {
         moreLoading = false;
+
+        markers.clear();
+        _networkService.nodes.forEach((node) async {
+          markers.add(Marker(
+            anchorPos: AnchorPos.align(AnchorAlign.center),
+            height: 30,
+            width: 30,
+            point: node.position,
+            builder: (ctx) => Icon(Icons.pin_drop),
+          ));
+        });
+
         if (isLoggedIn) favoriteValidators = BlocProvider.of<ValidatorBloc>(context).state.favoriteValidators;
         var temp = _networkService.validators;
         temp.forEach((element) {
@@ -186,6 +210,17 @@ class _NetworkScreenState extends State<NetworkScreen> {
                   children: <Widget>[
                     addHeaderTitle(),
                     isFiltering ? addSearchInput() : Container(),
+                    CustomButton(
+                        text: 'Visualizer ' + (visShowing ? 'Off' : 'On'),
+                        width: 400,
+                        height: 40,
+                        style: 1,
+                        onPressed: () {
+                          setState(() {
+                            visShowing = !visShowing;
+                          });
+                        }),
+                    !visShowing || markers.isEmpty ? Container() : showVisualizer(),
                     addTableHeader(),
                     moreLoading
                         ? addLoadingIndicator()
@@ -199,6 +234,57 @@ class _NetworkScreenState extends State<NetworkScreen> {
                   ],
                 ),
               ))));
+  }
+
+  void _onScroll(final PointerSignalEvent pointerSignal) {
+    if (pointerSignal is PointerScrollEvent) {
+      final delta = pointerSignal.scrollDelta.dy > 0 ? -1 : 1;
+      final zoom = this._mapController.zoom + delta;
+      if (zoom >= 1 && zoom <= 18) {
+        this._mapController.move(this._mapController.center, zoom);
+      }
+    }
+  }
+
+  Widget showVisualizer() {
+    return Container(
+      constraints: BoxConstraints(maxHeight: 500),
+      margin: EdgeInsets.only(top: 20),
+      child: Listener(
+        onPointerSignal: this._onScroll,
+        child: FlutterMap(
+          mapController: _mapController,
+          options: new MapOptions(
+            plugins: [
+              MarkerClusterPlugin(),
+            ],
+          ),
+          layers: [
+            TileLayerOptions(
+              urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              subdomains: ['a', 'b', 'c'],
+            ),
+            MarkerClusterLayerOptions(
+              maxClusterRadius: 120,
+              size: Size(40, 40),
+              fitBoundsOptions: FitBoundsOptions(
+                padding: EdgeInsets.all(50),
+              ),
+              markers: markers,
+              polygonOptions: PolygonOptions(
+                  borderColor: Colors.blueAccent,
+                  color: Colors.black12,
+                  borderStrokeWidth: 3),
+              builder: (context, markers) {
+                return FloatingActionButton(
+                  child: Text(markers.length.toString()),
+                  onPressed: null,
+                );
+              },
+            ),
+          ],
+        ))
+    );
   }
 
   Widget addLoadingIndicator() {

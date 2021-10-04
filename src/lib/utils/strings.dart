@@ -297,4 +297,7 @@ class Strings {
   static const String grayLogoImage = "assets/images/kira_logo_gray.png";
   static const String backgroundImage = "assets/images/background.png";
   static const String keyImage = 'assets/images/key.png';
+
+  // API Key
+  static const String ipify_key = 'at_zAfeiHrbepaqUiAo5C6LuN033k936';
 }

@@ -74,6 +74,10 @@ dependencies:
   universal_ui: ^0.0.8
   expandable: ^4.0.0
   get_it: ^6.0.0
+  dart_ipify: ^1.0.2
+  flutter_map: any
+  flutter_map_marker_cluster: any
+  latlong: 0.6.1
   # BLAKE2b and BLAKE2s cryptographic hashing functions
 
 dev_dependencies:

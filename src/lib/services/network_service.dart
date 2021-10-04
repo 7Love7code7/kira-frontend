@@ -10,6 +10,8 @@ class NetworkService {
   List<Validator> validators = [];
   int lastOffset = 0;
 
+  List<P2PNode> nodes = [];
+
   List<Block> blocks = [];
   Block block;
 
@@ -18,6 +20,49 @@ class NetworkService {
 
   List<BlockTransaction> transactions = [];
   BlockTransaction transaction;
+
+  Future<void> getNodes() async {
+    this.nodes.add(new P2PNode(
+        id: '0eb7526472a129e5b76473ff174efb2a950d807d',
+        ip: '18.198.226.57',
+        port: 26657,
+        ping: 100,
+        connected: true,
+        peers: ['c6593f858aa25a7181a91af16319ed68e25ebbab']
+    ));
+    this.nodes.add(new P2PNode(
+        id: 'c6593f858aa25a7181a91af16319ed68e25ebbab',
+        ip: '52.58.50.144',
+        port: 26657,
+        ping: 100,
+        connected: true,
+        peers: ['0eb7526472a129e5b76473ff174efb2a950d807d']
+    ));
+    this.nodes.add(new P2PNode(
+        id: 'be225091b15dc637f52d35b814258779e4c689f0',
+        ip: '18.198.32.150',
+        port: 26657,
+        ping: 100,
+        connected: false,
+        peers: []
+    ));
+    return;
+
+    final _storageService = getIt<StorageService>();
+    List<P2PNode> nodeList = [];
+
+    var apiUrl = await _storageService.getLiveRpcUrl();
+    var data = await http.get(apiUrl[0] + "/api/pub_p2p_list", headers: {'Access-Control-Allow-Origin': apiUrl[1]});
+
+    var bodyData = json.decode(data.body);
+    if (!bodyData.containsKey('node_list')) return;
+    var nodes = bodyData['node_list'];
+
+    for (int i = 0; i < nodes.length; i++) nodeList.add(P2PNode.fromJson(nodes[i]));
+
+    this.nodes.clear();
+    this.nodes.addAll(nodeList);
+  }
 
   Future<void> getValidators() async {
     final _storageService = getIt<StorageService>();
