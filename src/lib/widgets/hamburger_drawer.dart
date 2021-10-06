@@ -72,6 +72,8 @@ class _HamburgerDrawerState extends State<HamburgerDrawer> {
 
     for (int i = 0; i < 6; i++) {
       if (!isLoggedIn && (i == 1 || i == 2)) continue;
+      if (!isNetworkHealthy && (i == 0 || i == 3 || i == 4)) continue;
+
       items.add(
         InkWell(
           onHover: (value) {
