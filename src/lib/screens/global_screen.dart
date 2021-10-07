@@ -87,11 +87,11 @@ class _GlobalScreenState extends State<GlobalScreen> {
     return Scaffold(
         body: HeaderWrapper(
             childWidget: Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[],
-      ),
-    )));
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[],
+              ),
+            )));
   }
 }

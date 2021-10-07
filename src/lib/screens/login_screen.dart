@@ -26,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isLoading = false, isHover = false, isNetworkHealthy = false, isRpcError = false;
   bool saifuQR = false;
 
-  HeaderWrapper headerWrapper;
   FocusNode rpcUrlNode;
   TextEditingController rpcUrlController;
 
@@ -379,13 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               title: "Login in with Saifu",
                               qrCodeFunction: () => {
                                 //TODO: Implement SAIFU Accounts (Explorer Account (public address)  with Saifu Signer on Withdrawing)
-
-                                Navigator.popUntil(
-                                  context,
-                                  ModalRoute.withName(
-                                    '/login',
-                                  ),
-                                )
+                                Navigator.popUntil(context, ModalRoute.withName('/login'))
                               },
                             );
                           });
