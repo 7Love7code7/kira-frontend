@@ -120,8 +120,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     String lastSearchedAccount = await _storageService.getLastSearchedAccount();
     int tabIndex = await _storageService.getTabIndex();
     if (lastSearchedAccount.isNotEmpty) {
-      String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
-      rpc = rpc.replaceAll("http://", "");
+      String rpc = getIPOnly(this.apiUrl[0]);
       Navigator.pushReplacementNamed(context, '/account?addr=$lastSearchedAccount&type=$tabIndex&rpc=$rpc');
     }
   }
@@ -129,25 +128,21 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   void navigate2AccountScreen() async {
     int tabIndex = await _storageService.getTabIndex();
     if (this.query.isNotEmpty) {
-      String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
-      rpc = rpc.replaceAll("http://", "");
-      rpc = rpc.replaceAll("https://", "");
+      String rpc = getIPOnly(this.apiUrl[0]);
       Navigator.pushReplacementNamed(context, '/account?addr=$query&type=$tabIndex&rpc=${Uri.encodeComponent(rpc)}');
     }
   }
 
   void navigate2NetworkScreen() async {
     if (query.isNotEmpty) {
-      String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
-      rpc = rpc.replaceAll("http://", "");
+      String rpc = getIPOnly(this.apiUrl[0]);
       Navigator.pushReplacementNamed(context, '/network?info=$query&rpc=$rpc');
     }
   }
 
   void navigate2BlockScreen() async {
     if (query.isNotEmpty) {
-      String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
-      rpc = rpc.replaceAll("http://", "");
+      String rpc = getIPOnly(this.apiUrl[0]);
       Navigator.pushReplacementNamed(context, '/blocks?info=$query&rpc=$rpc');
     }
   }
