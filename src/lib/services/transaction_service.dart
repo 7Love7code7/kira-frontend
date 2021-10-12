@@ -12,8 +12,10 @@ class TransactionService {
 
   void initialize() async {
     Account currentAccount = await _storageService.getCurrentAccount();
-    currentAddress = currentAccount.hexAddress;
-    transactions = await _storageService.getTransactions(currentAddress);
+    if (currentAccount != null) {
+      currentAddress = currentAccount.hexAddress;
+      transactions = await _storageService.getTransactions(currentAddress);
+    }
   }
 
   Future<Transaction> getTransaction({hash}) async {

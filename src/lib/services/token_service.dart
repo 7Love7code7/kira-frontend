@@ -14,9 +14,11 @@ class TokenService {
 
   void initialize() async {
     Account currentAccount = await _storageService.getCurrentAccount();
-    currentAddress = currentAccount.hexAddress;
+    if (currentAccount != null) {
+      currentAddress = currentAccount.hexAddress;
+      tokens = await _storageService.getTokenBalance(currentAddress);
+    }
 
-    tokens = await _storageService.getTokenBalance(currentAddress);
     faucetTokens = await _storageService.getFaucetTokens();
     feeToken = await _storageService.getFeeToken();
   }
