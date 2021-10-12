@@ -26,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isLoading = false, isHover = false, isNetworkHealthy = false, isRpcError = false;
   bool saifuQR = false;
   bool isHttp = false;
+  bool localhostChecked = false;
 
   HeaderWrapper headerWrapper;
   FocusNode rpcUrlNode;
@@ -43,6 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (params.containsKey("rpc")) {
       var rpcURL = params['rpc'];
       onConnectPressed(rpcURL);
+    } else {
+      onConnectPressed('localhost');
     }
 
     _storageService.setTopBarStatus(false);
@@ -100,10 +103,11 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         print("ERROR OCCURED");
         setState(() {
-          testedRpcUrl = getIPOnly(rpcUrl[0]);
+          testedRpcUrl = localhostChecked ? getIPOnly(rpcUrl[0]) : '';
           isNetworkHealthy = false;
           isLoading = false;
-          if (inited == false) isRpcError = true;
+          if (!inited) isRpcError = true;
+          if (!inited) localhostChecked = true;
         });
       }
     }

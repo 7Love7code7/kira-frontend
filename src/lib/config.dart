@@ -26,13 +26,13 @@ Future<List<String>> loadInterxURL() async {
   } else {
     // If there's no HTTP or starts with only HTTP
     rpcUrl = rpcUrl.replaceAll('https://', '');
-    rpcUrl = rpcUrl.replaceAll('http://', '');
+    rpcUrl = rpcUrl.replaceAll('http://', '').trim();
     List<String> urlArray = rpcUrl.split(':');
 
     if (urlArray.length == 2) {
       int port = int.tryParse(urlArray[1]);
       if (port == null || port < 1024 || port > 65535) {
-        rpcUrl = urlArray[0] + ':11000';
+        rpcUrl = urlArray[0].trim() + ':11000';
       }
     }
 
@@ -72,11 +72,12 @@ Future<List<String>> loadInterxURL() async {
       if (isSucceed == false) {
         try {
           // Check after adding https
-          response = await http.get(rpcUrl + "/api/kira/status",
+          response = await http.get("http://" + rpcUrl + "/api/kira/status",
               headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
 
           if (response.body.contains('node_info') == true) {
             isSucceed = true;
+            rpcUrl = "http://" + rpcUrl;
             _storageService.setLiveRpcUrl(rpcUrl, origin);
           }
         } catch (e) {
@@ -87,12 +88,12 @@ Future<List<String>> loadInterxURL() async {
           if (!rpcUrl.contains(":")) {
             try {
               // Check Port-Added-Rpc-Url
-              response = await http.get(rpcUrl + ":11000/api/kira/status",
+              response = await http.get("http://" + rpcUrl + ":11000/api/kira/status",
                   headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
 
               if (response.body.contains('node_info') == true) {
                 isSucceed = true;
-                rpcUrl = rpcUrl + ":11000";
+                rpcUrl = "http://" + rpcUrl + ":11000";
                 _storageService.setLiveRpcUrl(rpcUrl, origin);
               }
             } catch (e) {
