@@ -74,15 +74,18 @@ class TransactionService {
 
       Map<String, dynamic> withdrawTxs = jsonDecode(response.body);
 
-      for (final hash in withdrawTxs.keys) {
+      for (final hash in withdrawTxs['transactions'].keys) {
         Transaction transaction = Transaction();
+
+        var txData = withdrawTxs['transactions'][hash];
 
         transaction.hash = hash;
         transaction.status = "confirmed";
-        transaction.time = withdrawTxs[hash] != null ? withdrawTxs[hash]['time'] : 0;
+        transaction.time = txData != null ? txData['time'] : 0;
 
-        var txs = withdrawTxs[hash]['txs'] ?? List.empty();
+        var txs = txData['txs'] ?? List.empty();
         if (txs.length == 0) continue;
+
         transaction.token = txs[0]['denom'];
         transaction.amount = txs[0]['amount'].toString();
         transaction.action = 'Withdraw';
@@ -101,15 +104,17 @@ class TransactionService {
 
       Map<String, dynamic> depositTxs = jsonDecode(response.body);
 
-      for (final hash in depositTxs.keys) {
+      for (final hash in depositTxs['transactions'].keys) {
         Transaction transaction = Transaction();
 
+        var txData = depositTxs['transactions'][hash];
         transaction.hash = hash;
         transaction.status = "confirmed";
-        transaction.time = depositTxs[hash] != null ? depositTxs[hash]['time'] : 0;
+        transaction.time = txData != null ? txData['time'] : 0;
 
-        var txs = depositTxs[hash]['txs'] ?? List.empty();
+        var txs = txData['txs'] ?? List.empty();
         if (txs.length == 0) continue;
+
         transaction.token = txs[0]['denom'];
         transaction.amount = txs[0]['amount'].toString();
         transaction.action = 'Deposit';
