@@ -16,7 +16,7 @@ import 'package:kira_auth/screens/token_balances_screen.dart';
 import 'package:kira_auth/screens/withdrawal_screen.dart';
 
 class FluroRouter {
-  static fluroRouter.Router router = fluroRouter.Router();
+  static fluroRouter.FluroRouter router = fluroRouter.FluroRouter();
 
   static fluroRouter.Handler _globalHandler =
       fluroRouter.Handler(handlerFunc: (BuildContext context, Map<String, dynamic> params) => GlobalScreen());
