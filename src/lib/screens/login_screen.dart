@@ -281,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
         focusNode: rpcUrlNode,
         controller: rpcUrlController,
         textInputAction: TextInputAction.done,
-        isWrong: isRpcError,
+        isWrong: isRpcError && testedRpcUrl != "",
         maxLines: 1,
         autocorrect: false,
         keyboardType: TextInputType.text,

@@ -154,26 +154,30 @@ class TransactionService {
 
     Map<String, dynamic> body = jsonDecode(response.body);
 
-    for (final hash in body.keys) {
-      Transaction transaction = Transaction();
+    if (body.containsKey('transactions')) {
+      body = body['transactions'] as Map<String, dynamic>;
 
-      transaction.hash = hash;
-      transaction.status = "confirmed";
-      transaction.time = body[hash] != null ? body[hash]['time'] : 0;
+      for (final hash in body.keys) {
+        Transaction transaction = Transaction();
 
-      var txs = body[hash]['txs'] ?? List.empty();
-      if (txs.length == 0) continue;
-      transaction.token = txs[0]['denom'];
-      transaction.amount = txs[0]['amount'].toString();
-      transaction.action = isWithdrawal == true ? 'Withdraw' : 'Deposit';
+        transaction.hash = hash;
+        transaction.status = "confirmed";
+        transaction.time = body[hash] != null ? body[hash]['time'] : 0;
 
-      if (isWithdrawal == true) {
-        transaction.recipient = txs[0]['address'];
-      } else {
-        transaction.sender = txs[0]['address'];
+        var txs = body[hash]['txs'] ?? List.empty();
+        if (txs.length == 0) continue;
+        transaction.token = txs[0]['denom'];
+        transaction.amount = txs[0]['amount'].toString();
+        transaction.action = isWithdrawal == true ? 'Withdraw' : 'Deposit';
+
+        if (isWithdrawal == true) {
+          transaction.recipient = txs[0]['address'];
+        } else {
+          transaction.sender = txs[0]['address'];
+        }
+
+        transactions.add(transaction);
       }
-
-      transactions.add(transaction);
     }
 
     var ucResponse =
