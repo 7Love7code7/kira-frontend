@@ -22,29 +22,62 @@ Future<List<String>> loadInterxURL() async {
   bool noHttp = !rpcUrl.startsWith('http');
   bool isSucceed = false;
 
-  if (rpcUrl != null) {
-    if (rpcUrl.startsWith('https://cors-anywhere.kira.network/')) {
-    } else if (rpcUrl.startsWith('http://') || !rpcUrl.startsWith('http')) {
-      // If there's no HTTP or starts with only HTTP
-      rpcUrl = rpcUrl.replaceAll('http://', '');
-      List<String> urlArray = rpcUrl.split(':');
+  if (rpcUrl.startsWith('https://cors-anywhere.kira.network/')) {
+  } else {
+    // If there's no HTTP or starts with only HTTP
+    rpcUrl = rpcUrl.replaceAll('https://', '');
+    rpcUrl = rpcUrl.replaceAll('http://', '').trim();
+    List<String> urlArray = rpcUrl.split(':');
 
-      if (urlArray.length == 2) {
-        int port = int.tryParse(urlArray[1]);
-        if (port == null || port < 1024 || port > 65535) {
-          rpcUrl = urlArray[0] + ':11000';
-        }
-      } else if (noHttp) {
-        // Incase of No HTTP
-        var response;
+    if (urlArray.length == 2) {
+      int port = int.tryParse(urlArray[1]);
+      if (port == null || port < 1024 || port > 65535) {
+        rpcUrl = urlArray[0].trim() + ':11000';
+      }
+    }
 
+    var response;
+
+    try {
+      // Check with raw rpc url
+      response = await http.get("https://" + rpcUrl + "/api/kira/status",
+          headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
+
+      if (response.body.contains('node_info') == true) {
+        isSucceed = true;
+        rpcUrl = "https://" + rpcUrl;
+        _storageService.setLiveRpcUrl(rpcUrl, origin);
+      }
+    } catch (e) {
+      print(e);
+    }
+
+    if (isSucceed == false) {
+      if (!rpcUrl.contains(":")) {
         try {
-          // Check with raw rpc url
-          response = await http.get(rpcUrl + "/api/kira/status",
+          // Check Port-Added-Rpc-Url
+          response = await http.get("https://" + rpcUrl + ":11000/api/kira/status",
               headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
 
           if (response.body.contains('node_info') == true) {
             isSucceed = true;
+            rpcUrl = "https://" + rpcUrl + ":11000";
+            _storageService.setLiveRpcUrl(rpcUrl, origin);
+          }
+        } catch (e) {
+          print(e);
+        }
+      }
+
+      if (isSucceed == false) {
+        try {
+          // Check after adding https
+          response = await http.get("http://" + rpcUrl + "/api/kira/status",
+              headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
+
+          if (response.body.contains('node_info') == true) {
+            isSucceed = true;
+            rpcUrl = "http://" + rpcUrl;
             _storageService.setLiveRpcUrl(rpcUrl, origin);
           }
         } catch (e) {
@@ -52,46 +85,26 @@ Future<List<String>> loadInterxURL() async {
         }
 
         if (isSucceed == false) {
-          try {
-            // Check Port-Added-Rpc-Url
-            response = await http.get("https://" + rpcUrl + "/api/kira/status",
-                headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
-
-            if (response.body.contains('node_info') == true) {
-              isSucceed = true;
-              rpcUrl = 'https://' + rpcUrl;
-              _storageService.setLiveRpcUrl(rpcUrl, origin);
-            }
-          } catch (e) {
-            print(e);
-          }
-
-          if (isSucceed == false) {
+          if (!rpcUrl.contains(":")) {
             try {
-              // Check after adding https
-              response = await http.get('https://' + rpcUrl + ":11000/api/kira/status",
+              // Check Port-Added-Rpc-Url
+              response = await http.get("http://" + rpcUrl + ":11000/api/kira/status",
                   headers: {'Access-Control-Allow-Origin': origin}).timeout(Duration(seconds: 3));
 
               if (response.body.contains('node_info') == true) {
                 isSucceed = true;
-                rpcUrl = 'https://' + rpcUrl + ':11000';
+                rpcUrl = "http://" + rpcUrl + ":11000";
                 _storageService.setLiveRpcUrl(rpcUrl, origin);
               }
             } catch (e) {
               print(e);
             }
-
-            if (isSucceed == false) {
-              rpcUrl = rpcUrl + ':11000';
-            }
           }
         }
-      } else {
-        rpcUrl = rpcUrl + ':11000';
       }
 
-      if (isSucceed == false && ((startsWithHttp && !noHttp) || noHttp) && rpcUrl.isNotEmpty) {
-        rpcUrl = 'http://' + rpcUrl;
+      if (isSucceed == false && ((startsWithHttp || noHttp) && rpcUrl.isNotEmpty)) {
+        rpcUrl = 'http://' + rpcUrl + ":11000";
         rpcUrl = 'https://cors-anywhere.kira.network/' + rpcUrl;
         _storageService.setLiveRpcUrl(rpcUrl, origin);
       }

@@ -37,7 +37,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   int sortIndex = 0;
   bool isAscending = true;
   bool isLoggedIn = false;
-  TextEditingController searchController;
   Account explorerAccount;
   bool isValidAddress = false;
   bool isTyping = false;
@@ -120,8 +119,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     String lastSearchedAccount = await _storageService.getLastSearchedAccount();
     int tabIndex = await _storageService.getTabIndex();
     if (lastSearchedAccount.isNotEmpty) {
-      String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
-      rpc = rpc.replaceAll("http://", "");
+      String rpc = getIPOnly(this.apiUrl[0]);
       Navigator.pushReplacementNamed(context, '/account?addr=$lastSearchedAccount&type=$tabIndex&rpc=$rpc');
     }
   }
@@ -129,25 +127,21 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   void navigate2AccountScreen() async {
     int tabIndex = await _storageService.getTabIndex();
     if (this.query.isNotEmpty) {
-      String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
-      rpc = rpc.replaceAll("http://", "");
-      rpc = rpc.replaceAll("https://", "");
+      String rpc = getIPOnly(this.apiUrl[0]);
       Navigator.pushReplacementNamed(context, '/account?addr=$query&type=$tabIndex&rpc=${Uri.encodeComponent(rpc)}');
     }
   }
 
   void navigate2NetworkScreen() async {
     if (query.isNotEmpty) {
-      String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
-      rpc = rpc.replaceAll("http://", "");
+      String rpc = getIPOnly(this.apiUrl[0]);
       Navigator.pushReplacementNamed(context, '/network?info=$query&rpc=$rpc');
     }
   }
 
   void navigate2BlockScreen() async {
     if (query.isNotEmpty) {
-      String rpc = this.apiUrl[0].toString().replaceAll("/api", "");
-      rpc = rpc.replaceAll("http://", "");
+      String rpc = getIPOnly(this.apiUrl[0]);
       Navigator.pushReplacementNamed(context, '/blocks?info=$query&rpc=$rpc');
     }
   }
@@ -393,13 +387,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
     getInterxURL();
     Future.delayed(const Duration(seconds: 1), getNodeStatus);
-    searchController = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
   }
 
   @override
@@ -505,7 +492,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         onChanged: (String newText) {
           this.setState(() {
             isTyping = true;
-            isValidAddress = false;
           });
         },
         onSubmitted: (String newText) {
@@ -745,7 +731,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
               isAscending = true;
               lastTxHash = '';
               _storageService.setTabIndex(this.tabType);
-              showSearchedAccount();
             });
           },
           child: Column(

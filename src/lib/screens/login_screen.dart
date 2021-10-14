@@ -25,6 +25,8 @@ class _LoginScreenState extends State<LoginScreen> {
   String testedRpcUrl = "";
   bool isLoading = false, isHover = false, isNetworkHealthy = false, isRpcError = false;
   bool saifuQR = false;
+  bool isHttp = false;
+  bool localhostChecked = false;
 
   FocusNode rpcUrlNode;
   TextEditingController rpcUrlController;
@@ -41,6 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (params.containsKey("rpc")) {
       var rpcURL = params['rpc'];
       onConnectPressed(rpcURL);
+    } else {
+      onConnectPressed('localhost');
     }
 
     _storageService.setTopBarStatus(false);
@@ -88,6 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
             networkId = nodeInfo.network;
             isNetworkHealthy = networkHealth;
             testedRpcUrl = getIPOnly(rpcUrl[0]);
+            isHttp = !rpcUrl[0].replaceAll("https://cors-anywhere.kira.network/", "").startsWith("https");
             isRpcError = false;
           });
         } else {
@@ -97,10 +102,11 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         print("ERROR OCCURED");
         setState(() {
-          testedRpcUrl = getIPOnly(rpcUrl[0]);
+          testedRpcUrl = localhostChecked ? getIPOnly(rpcUrl[0]) : '';
           isNetworkHealthy = false;
           isLoading = false;
-          if (inited == false) isRpcError = true;
+          if (!inited) isRpcError = true;
+          if (!inited) localhostChecked = true;
         });
       }
     }
@@ -113,8 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
         isNetworkHealthy = false;
       });
       rpcUrlController.text = "";
-      String customInterxRPCUrl = rpcUrlController.text;
-      _storageService.setInterxRPCUrl(customInterxRPCUrl);
+      _storageService.setInterxRPCUrl("");
       // Future.delayed(const Duration(milliseconds: 500), () async {
       //   checkNodeStatus();
       // });
@@ -177,7 +182,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 32,
                     fontWeight: FontWeight.w900),
               ),
-              if (isRpcError && testedRpcUrl != "") SizedBox(height: 20),
+              if ((isRpcError && testedRpcUrl != "") || isHttp) SizedBox(height: 20),
+              if (isHttp) Container(
+                margin: EdgeInsets.only(left: 30),
+                child: Text(
+                  Strings.httpConnected,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: KiraColors.kYellowColor, fontSize: 20, fontWeight: FontWeight.w900)),
+              ),
               if (isRpcError && testedRpcUrl != "")
                 Text(
                   "Node with address " + testedRpcUrl + " could not be reached",
@@ -268,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
         focusNode: rpcUrlNode,
         controller: rpcUrlController,
         textInputAction: TextInputAction.done,
-        isWrong: isRpcError,
+        isWrong: isRpcError && testedRpcUrl != "",
         maxLines: 1,
         autocorrect: false,
         keyboardType: TextInputType.text,

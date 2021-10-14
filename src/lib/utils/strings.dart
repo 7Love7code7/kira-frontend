@@ -82,6 +82,7 @@ class Strings {
   static const String yes = "Yes";
   static const String no = "No";
 
+  static const String httpConnected = "Http protocol is active";
   static const String failedToConnect = "Failed to connect";
   static const String selectFullNode = "Input or select address of the full-node you trust";
   static const String requireSSL = "Please specify `https://` if your address requires SSL certificate";
