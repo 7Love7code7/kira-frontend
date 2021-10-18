@@ -13,5 +13,5 @@ void setupGetIt() {
   getIt.registerLazySingleton<NetworkService>(() => NetworkService());
   getIt.registerLazySingleton<StatusService>(() => StatusService());
   getIt.registerLazySingleton<StorageService>(() => SharedPreferencesStorage());
-  getIt.registerLazySingleton<IdentityRegistrarService>(() => IdentityRegistrarService());
+  getIt.registerLazySingleton<IdentityRecordService>(() => IdentityRecordService());
 }

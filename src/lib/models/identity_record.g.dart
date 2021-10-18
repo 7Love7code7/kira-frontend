@@ -1,13 +1,13 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'identity_registrar.dart';
+part of 'identity_record.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-IdentityRegistrar _$IdentityRegistrarFromJson(Map<String, dynamic> json) {
-  return IdentityRegistrar(
+IdentityRecord _$IdentityRecordFromJson(Map<String, dynamic> json) {
+  return IdentityRecord(
       address: json['address'] as String,
       date: json['date'] as String,
       id: (json['id'] as num)?.toInt(),
@@ -15,7 +15,7 @@ IdentityRegistrar _$IdentityRegistrarFromJson(Map<String, dynamic> json) {
       value: json['value'] as String);
 }
 
-Map<String, dynamic> _$IdentityRegistrarToJson(IdentityRegistrar instance) => <String, dynamic>{
+Map<String, dynamic> _$IdentityRecordToJson(IdentityRecord instance) => <String, dynamic>{
       'address': instance.address,
       'date': instance.date,
       'id': instance.id,

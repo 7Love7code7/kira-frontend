@@ -67,6 +67,6 @@ abstract class StorageService {
   Future setValidators(List<String> _validatorData);
   Future<List<String>> getValidators();
 
-  Future<List<IdentityRegistrar>> getAllIdentityRegistrarRecords();
-  Future setAllIdentityRegistrarRecords(String _iRecordsData);
+  Future<List<IdentityRecord>> getAllIdentityRecords();
+  Future setAllIdentityRecords(String _iRecordsData);
 }

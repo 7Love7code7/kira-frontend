@@ -484,26 +484,26 @@ class SharedPreferencesStorage extends StorageService {
   }
 
   @override
-  Future<List<IdentityRegistrar>> getAllIdentityRegistrarRecords() async {
+  Future<List<IdentityRecord>> getAllIdentityRecords() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String identityRegistrarString = prefs.getString('ALL_IDENTITY_REGISTRARS');
+    String identityRecordString = prefs.getString('ALL_IDENTITY_REGISTRARS');
 
-    if (identityRegistrarString == null || identityRegistrarString == "") {
+    if (identityRecordString == null || identityRecordString == "") {
       return [];
     }
 
-    List<IdentityRegistrar> identityRegistrars = [];
-    List<dynamic> decodedResult = jsonDecode(identityRegistrarString);
+    List<IdentityRecord> identityRecords = [];
+    List<dynamic> decodedResult = jsonDecode(identityRecordString);
 
     for (int i = 0; i < decodedResult.length; i++) {
-      identityRegistrars.add(IdentityRegistrar.fromJson(decodedResult[i]));
+      identityRecords.add(IdentityRecord.fromJson(decodedResult[i]));
     }
 
-    return identityRegistrars;
+    return identityRecords;
   }
 
   @override
-  Future setAllIdentityRegistrarRecords(String _iRecordsData) async {
+  Future setAllIdentityRecords(String _iRecordsData) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setString("ALL_IDENTITY_REGISTRARS", _iRecordsData);
     print(_iRecordsData);

@@ -4,63 +4,63 @@ import 'package:kira_auth/models/export.dart';
 import 'package:kira_auth/services/export.dart';
 import 'package:kira_auth/service_manager.dart';
 
-class IdentityRegistrarService {
+class IdentityRecordService {
   final _storageService = getIt<StorageService>();
 
-  List<IdentityRegistrar> iRecords = [];
-  List<IdentityRegistrar> iRecordVerifyRequests = [];
+  List<IdentityRecord> iRecords = [];
+  List<IdentityRecord> iRecordVerifyRequests = [];
 
   void initialize() async {
-    iRecords = await _storageService.getAllIdentityRegistrarRecords();
+    iRecords = await _storageService.getAllIdentityRecords();
   }
 
-  Future<IdentityRegistrar> queryIdentityRecord(String id) async {
+  Future<IdentityRecord> queryIdentityRecord(String id) async {
     var apiUrl = await _storageService.getLiveRpcUrl();
-    IdentityRegistrar identityRegistrar = IdentityRegistrar();
+    IdentityRecord identityRecord = IdentityRecord();
 
     try {
       var response = await http
           .get(apiUrl[0] + "/api/kira/gov/identity_record/" + id, headers: {'Access-Control-Allow-Origin': apiUrl[1]});
       var body = jsonDecode(response.body);
 
-      identityRegistrar.address = body['record']['address'];
-      identityRegistrar.date = body['record']['date'];
-      identityRegistrar.id = body['record']['id'];
-      identityRegistrar.key = body['record']['key'];
-      identityRegistrar.value = body['record']['value'];
+      identityRecord.address = body['record']['address'];
+      identityRecord.date = body['record']['date'];
+      identityRecord.id = body['record']['id'];
+      identityRecord.key = body['record']['key'];
+      identityRecord.value = body['record']['value'];
     } catch (e) {
       print(e);
       return null;
     }
 
-    return identityRegistrar;
+    return identityRecord;
   }
 
-  Future<IdentityRegistrar> queryIdentityRecordByAddress(String creater) async {
+  Future<IdentityRecord> queryIdentityRecordByAddress(String creater) async {
     var apiUrl = await _storageService.getLiveRpcUrl();
-    IdentityRegistrar identityRegistrar = IdentityRegistrar();
+    IdentityRecord identityRecord = IdentityRecord();
 
     try {
       var response = await http.get(apiUrl[0] + "/api/kira/gov/identity_records/" + creater,
           headers: {'Access-Control-Allow-Origin': apiUrl[1]});
       var body = jsonDecode(response.body);
 
-      identityRegistrar.address = body['record']['address'];
-      identityRegistrar.date = body['record']['date'];
-      identityRegistrar.id = body['record']['id'];
-      identityRegistrar.key = body['record']['key'];
-      identityRegistrar.value = body['record']['value'];
+      identityRecord.address = body['record']['address'];
+      identityRecord.date = body['record']['date'];
+      identityRecord.id = body['record']['id'];
+      identityRecord.key = body['record']['key'];
+      identityRecord.value = body['record']['value'];
     } catch (e) {
       print(e);
       return null;
     }
 
-    return identityRegistrar;
+    return identityRecord;
   }
 
-  Future<IdentityRegistrar> queryIdentityRecordVerifyRequest(String requestId) async {
+  Future<IdentityRecord> queryIdentityRecordVerifyRequest(String requestId) async {
     var apiUrl = await _storageService.getLiveRpcUrl();
-    IdentityRegistrar identityRegistrar = IdentityRegistrar();
+    IdentityRecord identityRecord = IdentityRecord();
 
     try {
       var response = await http.get(apiUrl[0] + "/api/kira/gov/identity_verify_record/" + requestId,
@@ -73,12 +73,12 @@ class IdentityRegistrarService {
       return null;
     }
 
-    return identityRegistrar;
+    return identityRecord;
   }
 
-  Future<IdentityRegistrar> queryIdentityRecordVerifyRequestsByRequester(String requester) async {
+  Future<IdentityRecord> queryIdentityRecordVerifyRequestsByRequester(String requester) async {
     var apiUrl = await _storageService.getLiveRpcUrl();
-    IdentityRegistrar identityRegistrar = IdentityRegistrar();
+    IdentityRecord identityRecord = IdentityRecord();
 
     try {
       var response = await http.get(apiUrl[0] + "/api/kira/gov/identity_verify_requests_by_requester/" + requester,
@@ -91,12 +91,12 @@ class IdentityRegistrarService {
       return null;
     }
 
-    return identityRegistrar;
+    return identityRecord;
   }
 
-  Future<IdentityRegistrar> queryIdentityRecordVerifyRequestsByApprover(String approver) async {
+  Future<IdentityRecord> queryIdentityRecordVerifyRequestsByApprover(String approver) async {
     var apiUrl = await _storageService.getLiveRpcUrl();
-    IdentityRegistrar identityRegistrar = IdentityRegistrar();
+    IdentityRecord identityRecord = IdentityRecord();
 
     try {
       var response = await http.get(apiUrl[0] + "/api/kira/gov/identity_verify_requests_by_approver/" + approver,
@@ -109,10 +109,10 @@ class IdentityRegistrarService {
       return null;
     }
 
-    return identityRegistrar;
+    return identityRecord;
   }
 
-  Future queryAllIdentityRegistrarRecords() async {
+  Future queryAllIdentityRecords() async {
     var apiUrl = await _storageService.getLiveRpcUrl();
 
     try {
@@ -122,16 +122,16 @@ class IdentityRegistrarService {
       var body = jsonDecode(response.body);
 
       for (var record in body['records']) {
-        IdentityRegistrar identityRegistrar = IdentityRegistrar();
-        identityRegistrar.address = record['address'];
-        identityRegistrar.date = record['date'];
-        identityRegistrar.id = record['id'];
-        identityRegistrar.key = record['key'];
-        identityRegistrar.value = record['value'];
-        iRecords.add(identityRegistrar);
+        IdentityRecord identityRecord = IdentityRecord();
+        identityRecord.address = record['address'];
+        identityRecord.date = record['date'];
+        identityRecord.id = record['id'];
+        identityRecord.key = record['key'];
+        identityRecord.value = record['value'];
+        iRecords.add(identityRecord);
       }
 
-      _storageService.setAllIdentityRegistrarRecords(jsonEncode(iRecords));
+      _storageService.setAllIdentityRecords(jsonEncode(iRecords));
     } catch (e) {
       print(e);
       return;
@@ -149,16 +149,16 @@ class IdentityRegistrarService {
       var body = jsonDecode(response.body);
 
       for (var record in body['records']) {
-        IdentityRegistrar identityRegistrar = IdentityRegistrar();
-        identityRegistrar.address = record['address'];
-        identityRegistrar.date = record['date'];
-        identityRegistrar.id = record['id'];
-        identityRegistrar.key = record['key'];
-        identityRegistrar.value = record['value'];
-        iRecords.add(identityRegistrar);
+        IdentityRecord identityRecord = IdentityRecord();
+        identityRecord.address = record['address'];
+        identityRecord.date = record['date'];
+        identityRecord.id = record['id'];
+        identityRecord.key = record['key'];
+        identityRecord.value = record['value'];
+        iRecords.add(identityRecord);
       }
 
-      // _storageService.setAllIdentityRegistrarRecords(jsonEncode(iRecords));
+      // _storageService.setAllIdentityRecords(jsonEncode(iRecords));
     } catch (e) {
       print(e);
       return;

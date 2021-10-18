@@ -14,4 +14,4 @@ export 'block.dart';
 export 'block_transaction.dart';
 export 'proposal.dart';
 export 'tx_types.dart';
-export 'identity_registrar.dart';
+export 'identity_record.dart';
