@@ -8,3 +8,4 @@ export 'transaction_service.dart';
 export 'network_service.dart';
 export 'proposal_service.dart';
 export 'account_service.dart';
+export 'identity_registrar_service.dart';

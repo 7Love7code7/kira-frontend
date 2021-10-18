@@ -482,4 +482,30 @@ class SharedPreferencesStorage extends StorageService {
 
     return validators;
   }
+
+  @override
+  Future<List<IdentityRegistrar>> getAllIdentityRegistrarRecords() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String identityRegistrarString = prefs.getString('ALL_IDENTITY_REGISTRARS');
+
+    if (identityRegistrarString == null || identityRegistrarString == "") {
+      return [];
+    }
+
+    List<IdentityRegistrar> identityRegistrars = [];
+    List<dynamic> decodedResult = jsonDecode(identityRegistrarString);
+
+    for (int i = 0; i < decodedResult.length; i++) {
+      identityRegistrars.add(IdentityRegistrar.fromJson(decodedResult[i]));
+    }
+
+    return identityRegistrars;
+  }
+
+  @override
+  Future setAllIdentityRegistrarRecords(String _iRecordsData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString("ALL_IDENTITY_REGISTRARS", _iRecordsData);
+    print(_iRecordsData);
+  }
 }

@@ -57,11 +57,9 @@ class Transaction {
   String getAmount() {
     switch (this.token) {
       case 'ukex':
-        return (double.parse(this.amount) / pow(10, 6)).toString() + ' ' +
-            'KEX';
+        return (double.parse(this.amount) / pow(10, 6)).toString() + ' ' + 'KEX';
       case 'mkex':
-        return (double.parse(this.amount) / pow(10, 9)).toString() + ' ' +
-            'KEX';
+        return (double.parse(this.amount) / pow(10, 9)).toString() + ' ' + 'KEX';
         break;
       default:
         return this.amount + ' ' + this.token;
