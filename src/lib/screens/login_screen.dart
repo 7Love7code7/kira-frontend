@@ -58,7 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void initializeValues() {
     _storageService.setLastSearchedAccount("");
     _storageService.setTopbarIndex(0);
-    _storageService.setTabIndex(0);
   }
 
   @override

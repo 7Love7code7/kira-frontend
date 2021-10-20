@@ -9,6 +9,7 @@ class Strings {
   static const String disconnected = "Disconnected";
   static const String update = "Update";
   static const String account = "Account";
+  static const String invalidAddress = "Kira address but not for account";
   static const String searchFailed = "Not Found";
   static const String deposit = "Deposit";
   static const String withdraw = "Withdraw";

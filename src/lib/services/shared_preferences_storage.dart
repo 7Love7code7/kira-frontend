@@ -253,18 +253,6 @@ class SharedPreferencesStorage extends StorageService {
   }
 
   @override
-  Future setTabIndex(int tabIndex) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setInt('TAB_INDEX', tabIndex);
-  }
-
-  @override
-  Future<int> getTabIndex() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('TAB_INDEX') ?? 0;
-  }
-
-  @override
   Future<bool> checkPasswordExpired() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
