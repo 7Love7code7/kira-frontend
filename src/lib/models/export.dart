@@ -15,3 +15,4 @@ export 'block_transaction.dart';
 export 'proposal.dart';
 export 'tx_types.dart';
 export 'identity_record.dart';
+export 'identity_record_verify.dart';

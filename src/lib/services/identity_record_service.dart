@@ -8,7 +8,7 @@ class IdentityRecordService {
   final _storageService = getIt<StorageService>();
 
   List<IdentityRecord> iRecords = [];
-  List<IdentityRecord> iRecordVerifyRequests = [];
+  List<IdentityRecordVerify> iRecordVerifyRequests = [];
 
   void initialize() async {
     iRecords = await _storageService.getAllIdentityRecords();
@@ -148,14 +148,15 @@ class IdentityRecordService {
 
       var body = jsonDecode(response.body);
 
-      for (var record in body['records']) {
-        IdentityRecord identityRecord = IdentityRecord();
-        identityRecord.address = record['address'];
-        identityRecord.date = record['date'];
-        identityRecord.id = record['id'];
-        identityRecord.key = record['key'];
-        identityRecord.value = record['value'];
-        iRecords.add(identityRecord);
+      for (var record in body['verify_records']) {
+        IdentityRecordVerify identityRecordVerifyRequest = IdentityRecordVerify();
+        identityRecordVerifyRequest.id = record['id'];
+        identityRecordVerifyRequest.address = record['address'];
+        identityRecordVerifyRequest.verifier = record['verifier'];
+        identityRecordVerifyRequest.recordIds = record['recordIds'];
+        identityRecordVerifyRequest.tip = record['tip'];
+        identityRecordVerifyRequest.lastRecordEditDate = record['lastRecordEditDate'];
+        iRecordVerifyRequests.add(identityRecordVerifyRequest);
       }
 
       // _storageService.setAllIdentityRecords(jsonEncode(iRecords));
