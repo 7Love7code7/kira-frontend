@@ -41,8 +41,8 @@ class _LoginScreenState extends State<LoginScreen> {
     Map<String, String> params = uri.queryParameters; // query parameters automatically populated
 
     if (params.containsKey("rpc")) {
-      var rpcURL = params['rpc'];
-      onConnectPressed(rpcURL);
+      var rpcUrl = params['rpc'];
+      onConnectPressed(rpcUrl);
     } else {
       onConnectPressed('localhost');
     }
@@ -51,7 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _storageService.setLoginStatus(false);
     rpcUrlNode = FocusNode();
     rpcUrlController = TextEditingController();
-    getNodeStatus(true);
     initializeValues();
   }
 
@@ -67,12 +66,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void getNodeStatus(bool inited) async {
+  void getNodeStatus() async {
     final _statusService = getIt<StatusService>();
-
-    if (!inited) {
-      await _statusService.getNodeStatus();
-    }
+    await _statusService.getNodeStatus();
 
     var rpcUrl = await _storageService.getLiveRpcUrl();
 
@@ -104,8 +100,8 @@ class _LoginScreenState extends State<LoginScreen> {
           testedRpcUrl = localhostChecked ? getIPOnly(rpcUrl[0]) : '';
           isNetworkHealthy = false;
           isLoading = false;
-          if (!inited) isRpcError = true;
-          if (!inited) localhostChecked = true;
+          isRpcError = true;
+          localhostChecked = true;
         });
       }
     }
@@ -329,7 +325,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _storageService.setInterxRPCUrl(customInterxRPCUrl);
 
     Future.delayed(const Duration(milliseconds: 500), () async {
-      getNodeStatus(false);
+      getNodeStatus();
     });
   }
 

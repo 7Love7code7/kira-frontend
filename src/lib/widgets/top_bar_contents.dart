@@ -89,7 +89,7 @@ class _TopBarContentsState extends State<TopBarContents> {
                       context, '/proposals' + (!widget._loggedIn ? '?rpc=$nodeAddress' : ''));
                   break;
                 case 5: // Settings
-                  Navigator.pushReplacementNamed(context, widget._loggedIn ? '/settings' : '/login');
+                  Navigator.pushReplacementNamed(context, widget._loggedIn ? '/settings' : ('/login' + (nodeAddress.isNotEmpty ? '?rpc=$nodeAddress' : '')));
                   break;
               }
             },
