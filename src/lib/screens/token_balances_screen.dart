@@ -234,12 +234,10 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         setState(() {
           depositTrx = _dTransactions;
           withdrawTrx = _wTransactions;
+          isValidAddress = true;
+          isSearchFinished = true;
 
-          if (depositTrx.isEmpty) {
-            isValidAddress = false;
-            isSearchFinished = true;
-          } else {
-            isValidAddress = true;
+          if (depositTrx.isNotEmpty) {
             isFiltering = false;
             _storageService.setLastSearchedAccount(this.query);
             isSearchFinished = true;
