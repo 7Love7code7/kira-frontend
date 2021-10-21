@@ -35,7 +35,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   bool isLoggedIn = false;
   Account explorerAccount;
   bool isValidAddress = false;
-  bool isValidAccount = false;
   bool isTyping = false;
 
   Account currentAccount;
@@ -163,7 +162,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     this.query = params['addr'];
 
     setState(() {
-      this.isValidAccount = false;
       this.tabType = int.parse(params.containsKey("type") ? params['type'] : "0");
     });
 
@@ -182,9 +180,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           publicKey: "");
 
       await QueryService.getAccountData(currentAccount);
-      setState(() {
-        isValidAccount = true;
-      });
       await getTransactions(currentAccount);
     } catch (e) {
       setState(() {
@@ -419,7 +414,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   Widget addHeaderTitle() {
     return Container(
         margin: EdgeInsets.only(top: 30),
-        child: Text(isValidAccount ? Strings.invalidAddress : Strings.searchFailed,
+        child: Text(Strings.searchFailed,
           style: TextStyle(color: KiraColors.white, fontSize: 30, fontWeight: FontWeight.w900),
         ));
   }
