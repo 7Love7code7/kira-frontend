@@ -61,53 +61,43 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   var isSearchFinished = false;
 
   void getTokens() async {
-    bool _isLoggedIn = await _storageService.getLoginStatus();
+    if (currentAccount == null) return;
 
-    Account curAccount;
-    if (_isLoggedIn) {
-      curAccount = _accountService.currentAccount;
-      if (curAccount == null) {
-        curAccount = await _storageService.getCurrentAccount();
-      }
+    List<String> _faucetTokens = _tokenService.faucetTokens;
+
+    if (_faucetTokens.length == 0) {
+      _faucetTokens = await _storageService.getFaucetTokens();
     }
 
-    if (curAccount != null) {
-      List<String> _faucetTokens = _tokenService.faucetTokens;
+    if (_faucetTokens.length == 0) {
+      await _tokenService.getAvailableFaucetTokens();
+    }
 
-      if (_faucetTokens.length == 0) {
-        _faucetTokens = await _storageService.getFaucetTokens();
-      }
+    List<Token> _tokenBalance = _tokenService.tokens;
 
-      if (_faucetTokens.length == 0) {
-        await _tokenService.getAvailableFaucetTokens();
-      }
+    if (_tokenBalance.length == 0) {
+      _tokenBalance = await _storageService.getTokenBalance(currentAccount.bech32Address);
+    }
 
-      List<Token> _tokenBalance = _tokenService.tokens;
+    if (_tokenBalance.length == 0) {
+      await _tokenService.getTokens(currentAccount.bech32Address);
+      _tokenBalance = _tokenService.tokens;
+    }
 
-      if (_tokenBalance.length == 0) {
-        _tokenBalance = await _storageService.getTokenBalance(curAccount.bech32Address);
-      }
+    if (mounted) {
+      setState(() {
+        currentAccount = currentAccount;
+        tokens = _tokenBalance;
+        faucetTokens = _faucetTokens;
+        faucetToken = faucetTokens.length > 0 ? faucetTokens[0] : null;
 
-      if (_tokenBalance.length == 0) {
-        await _tokenService.getTokens(curAccount.bech32Address);
-        _tokenBalance = _tokenService.tokens;
-      }
-
-      if (mounted) {
-        setState(() {
-          currentAccount = curAccount;
-          tokens = _tokenBalance;
-          faucetTokens = _faucetTokens;
-          faucetToken = faucetTokens.length > 0 ? faucetTokens[0] : null;
-
-          for (int i = 0; i < _tokenBalance.length; i++) {
-            if (_tokenBalance[i].ticker.toUpperCase() == "KEX") {
-              kexBalance = _tokenBalance[i].getTokenBalanceInTicker;
-              break;
-            }
+        for (int i = 0; i < _tokenBalance.length; i++) {
+          if (_tokenBalance[i].ticker.toUpperCase() == "KEX") {
+            kexBalance = _tokenBalance[i].getTokenBalanceInTicker;
+            break;
           }
-        });
-      }
+        }
+      });
     }
   }
 

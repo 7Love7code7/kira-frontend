@@ -37,15 +37,20 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
 
-    var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
-    Map<String, String> params = uri.queryParameters; // query parameters automatically populated
-
-    if (params.containsKey("rpc")) {
-      var rpcUrl = params['rpc'];
-      onConnectPressed(rpcUrl);
-    } else {
-      onConnectPressed('localhost');
-    }
+    _storageService.getLiveRpcUrl().then((rpcUrl) {
+      var _networkId = BlocProvider.of<NetworkBloc>(context).state.networkId;
+      if (rpcUrl != null && rpcUrl.isNotEmpty && rpcUrl[0].isNotEmpty) {
+        this.setState(() {
+          networkId = _networkId;
+          isNetworkHealthy = true;
+          testedRpcUrl = rpcUrl[0];
+          isHttp = !rpcUrl[0].replaceAll("https://cors-anywhere.kira.network/", "").startsWith("https");
+          isRpcError = false;
+        });
+      } else {
+        onConnectPressed('localhost');
+      }
+    });
 
     _storageService.setTopBarStatus(false);
     _storageService.setLoginStatus(false);

@@ -84,7 +84,8 @@ class TokenService {
           }
         }
 
-        tokenList.add(token);
+        if (token.balance > 0)
+          tokenList.add(token);
       }
     }
 
