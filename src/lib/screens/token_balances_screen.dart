@@ -105,8 +105,8 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     if (lastSearched)
       query = await _storageService.getLastSearchedAccount();
     if (this.query.isNotEmpty) {
-      String rpc = getIPOnly(this.apiUrl[0]);
-      Navigator.pushReplacementNamed(context, '/account?addr=$query&rpc=${Uri.encodeComponent(rpc)}');
+      String rpc = Uri.encodeComponent(getIPOnly(this.apiUrl[0]));
+      Navigator.pushReplacementNamed(context, '/account?addr=$query&rpc=$rpc');
     }
   }
 

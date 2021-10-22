@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
         this.setState(() {
           networkId = _networkId;
           isNetworkHealthy = true;
-          testedRpcUrl = rpcUrl[0];
+          testedRpcUrl = getIPOnly(rpcUrl[0]);
           isHttp = !rpcUrl[0].replaceAll("https://cors-anywhere.kira.network/", "").startsWith("https");
           isRpcError = false;
         });
@@ -441,7 +441,7 @@ class _LoginScreenState extends State<LoginScreen> {
       style: 1,
       onPressed: () {
         _storageService.setLoginStatus(false);
-        Navigator.pushReplacementNamed(context, '/account?rpc=$testedRpcUrl');
+        Navigator.pushReplacementNamed(context, '/account?rpc=${Uri.encodeComponent(testedRpcUrl)}');
       },
     );
   }
