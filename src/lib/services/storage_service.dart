@@ -45,8 +45,6 @@ abstract class StorageService {
   Future setLastSearchedAccount(String account);
   Future<String> getLastSearchedAccount();
 
-  Future setTabIndex(int tabIndex);
-  Future<int> getTabIndex();
   Future<bool> checkPasswordExpired();
   Future<bool> checkModelExists(ModelType type, String id);
   Future storeModels(ModelType type, String id, String data);

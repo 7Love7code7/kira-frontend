@@ -392,39 +392,10 @@ class _BlocksScreenState extends State<BlocksScreen> {
         Container(
           margin: EdgeInsets.only(left: 50),
           child: InkWell(
-              onTap: () {
-                if (query.trim().isEmpty) {
-                  AlertDialog alert =
-                      AlertDialog(title: Text(Strings.kiraNetwork), content: Text(Strings.noKeywordInput));
-                  showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return alert;
-                      });
-                  return;
-                }
-                _networkService.searchBlock(query).then((v) {
-                  this.setState(() {
-                    filteredTransactions.clear();
-                    filteredTransactions.addAll(_networkService.transactions);
-                    filteredBlock = _networkService.block;
-                    filteredTransaction = null;
-                    searchSubmitted = true;
-                  });
-                }).catchError((e) => {
-                      _networkService.searchTransaction(query).then((v) {
-                        this.setState(() {
-                          filteredTransactions.clear();
-                          filteredBlock = null;
-                          filteredTransaction = _networkService.transaction;
-                          searchSubmitted = true;
-                        });
-                      })
-                    });
-
-                onSearchPressed();
-              },
-              child: Text(Strings.search, style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16))),
+            onTap: () {
+              onSearchPressed();
+            },
+            child: Text(Strings.search, style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16))),
         ),
       ]),
     );

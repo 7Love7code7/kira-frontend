@@ -21,13 +21,9 @@ class TokenBalanceScreen extends StatefulWidget {
 class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   final _storageService = getIt<StorageService>();
   final _tokenService = getIt<TokenService>();
-  final _networkService = getIt<NetworkService>();
   final _accountService = getIt<AccountService>();
 
-  List<Validator> validators = [];
-  List<Validator> filteredValidators = [];
   String query = "";
-
   final _transactionService = getIt<TransactionService>();
   String notification = '';
   String faucetToken;
@@ -65,84 +61,52 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   var isSearchFinished = false;
 
   void getTokens() async {
-    bool _isLoggedIn = await _storageService.getLoginStatus();
+    if (currentAccount == null) return;
 
-    Account curAccount;
-    if (_isLoggedIn) {
-      curAccount = _accountService.currentAccount;
-      if (curAccount == null) {
-        curAccount = await _storageService.getCurrentAccount();
-      }
+    List<String> _faucetTokens = _tokenService.faucetTokens;
+
+    if (_faucetTokens.length == 0) {
+      _faucetTokens = await _storageService.getFaucetTokens();
     }
 
-    if (curAccount != null) {
-      List<String> _faucetTokens = _tokenService.faucetTokens;
+    if (_faucetTokens.length == 0) {
+      await _tokenService.getAvailableFaucetTokens();
+    }
 
-      if (_faucetTokens.length == 0) {
-        _faucetTokens = await _storageService.getFaucetTokens();
-      }
+    List<Token> _tokenBalance = _tokenService.tokens;
 
-      if (_faucetTokens.length == 0) {
-        await _tokenService.getAvailableFaucetTokens();
-      }
+    if (_tokenBalance.length == 0) {
+      _tokenBalance = await _storageService.getTokenBalance(currentAccount.bech32Address);
+    }
 
-      List<Token> _tokenBalance = _tokenService.tokens;
+    if (_tokenBalance.length == 0) {
+      await _tokenService.getTokens(currentAccount.bech32Address);
+      _tokenBalance = _tokenService.tokens;
+    }
 
-      if (_tokenBalance.length == 0) {
-        _tokenBalance = await _storageService.getTokenBalance(curAccount.bech32Address);
-      }
+    if (mounted) {
+      setState(() {
+        currentAccount = currentAccount;
+        tokens = _tokenBalance;
+        faucetTokens = _faucetTokens;
+        faucetToken = faucetTokens.length > 0 ? faucetTokens[0] : null;
 
-      if (_tokenBalance.length == 0) {
-        await _tokenService.getTokens(curAccount.bech32Address);
-        _tokenBalance = _tokenService.tokens;
-      }
-
-      if (mounted) {
-        setState(() {
-          currentAccount = curAccount;
-          tokens = _tokenBalance;
-          faucetTokens = _faucetTokens;
-          faucetToken = faucetTokens.length > 0 ? faucetTokens[0] : null;
-
-          for (int i = 0; i < _tokenBalance.length; i++) {
-            if (_tokenBalance[i].ticker.toUpperCase() == "KEX") {
-              kexBalance = _tokenBalance[i].getTokenBalanceInTicker;
-              break;
-            }
+        for (int i = 0; i < _tokenBalance.length; i++) {
+          if (_tokenBalance[i].ticker.toUpperCase() == "KEX") {
+            kexBalance = _tokenBalance[i].getTokenBalanceInTicker;
+            break;
           }
-        });
-      }
+        }
+      });
     }
   }
 
-  void showSearchedAccount() async {
-    String lastSearchedAccount = await _storageService.getLastSearchedAccount();
-    int tabIndex = await _storageService.getTabIndex();
-    if (lastSearchedAccount.isNotEmpty) {
-      String rpc = getIPOnly(this.apiUrl[0]);
-      Navigator.pushReplacementNamed(context, '/account?addr=$lastSearchedAccount&type=$tabIndex&rpc=$rpc');
-    }
-  }
-
-  void navigate2AccountScreen() async {
-    int tabIndex = await _storageService.getTabIndex();
+  void navigate2AccountScreen({lastSearched = false}) async {
+    if (lastSearched)
+      query = await _storageService.getLastSearchedAccount();
     if (this.query.isNotEmpty) {
-      String rpc = getIPOnly(this.apiUrl[0]);
-      Navigator.pushReplacementNamed(context, '/account?addr=$query&type=$tabIndex&rpc=${Uri.encodeComponent(rpc)}');
-    }
-  }
-
-  void navigate2NetworkScreen() async {
-    if (query.isNotEmpty) {
-      String rpc = getIPOnly(this.apiUrl[0]);
-      Navigator.pushReplacementNamed(context, '/network?info=$query&rpc=$rpc');
-    }
-  }
-
-  void navigate2BlockScreen() async {
-    if (query.isNotEmpty) {
-      String rpc = getIPOnly(this.apiUrl[0]);
-      Navigator.pushReplacementNamed(context, '/blocks?info=$query&rpc=$rpc');
+      String rpc = Uri.encodeComponent(getIPOnly(this.apiUrl[0]));
+      Navigator.pushReplacementNamed(context, '/account?addr=$query&rpc=$rpc');
     }
   }
 
@@ -179,20 +143,16 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   }
 
   Future<void> checkAddress() async {
-    this.isSearchFinished = false;
+    isSearchFinished = false;
 
     var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
     Map<String, String> params = uri.queryParameters; // query parameters automatically populated
 
-    if (params.containsKey("addr") == false) return;
+    if (!params.containsKey("addr")) return;
     this.query = params['addr'];
 
-    if (params.containsKey("type") == false) return;
-
-    String pageType = params['type'];
-
     setState(() {
-      this.tabType = int.parse(pageType);
+      this.tabType = int.parse(params.containsKey("type") ? params['type'] : "0");
     });
 
     String hexAddress = "";
@@ -209,78 +169,12 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           privateKey: "",
           publicKey: "");
 
+      await QueryService.getAccountData(currentAccount);
       await getTransactions(currentAccount);
     } catch (e) {
       setState(() {
         isValidAddress = false;
-      });
-    }
-
-    if (!isValidAddress) {
-      await getValidators();
-      if (filteredValidators.isNotEmpty) {
-        this.navigate2NetworkScreen();
-        this.isSearchFinished = true;
-      } else {
-        Block filteredBlock;
-        BlockTransaction filteredTransaction;
-        List<BlockTransaction> filteredTransactions = [];
-
-        _networkService.searchBlock(query).then((v) {
-          this.setState(() {
-            filteredTransactions.clear();
-            filteredTransactions.addAll(_networkService.transactions);
-            filteredBlock = _networkService.block;
-            filteredTransaction = null;
-
-            if (filteredTransactions.isNotEmpty || filteredBlock.getReducedHash.isNotEmpty) {
-              navigate2BlockScreen();
-            }
-
-            this.isSearchFinished = true;
-          });
-        }).catchError((e) => {
-              _networkService.searchTransaction(query).then((v) {
-                this.setState(() {
-                  filteredTransactions.clear();
-                  filteredBlock = null;
-                  filteredTransaction = _networkService.transaction;
-
-                  if (filteredTransaction.getReducedHash.isNotEmpty) {
-                    navigate2BlockScreen();
-                  }
-
-                  this.isSearchFinished = true;
-                });
-              })
-            });
-
-        setState(() {
-          this.isSearchFinished = true;
-        });
-      }
-    }
-  }
-
-  getValidators() async {
-    await _networkService.getValidators();
-    if (mounted) {
-      setState(() {
-        var temp = _networkService.validators;
-
-        validators.clear();
-        validators.addAll(temp);
-        filteredValidators.clear();
-        filteredValidators.addAll(query.isEmpty
-            ? validators
-            : validators
-                .where((x) => x.moniker.toLowerCase().contains(query) || x.address.toLowerCase().contains(query)));
-
-        filteredValidators = validators
-            .where((x) =>
-                x.moniker.toLowerCase().contains(query.toLowerCase()) ||
-                x.address.toLowerCase().contains(query.toLowerCase()))
-            .toList();
+        isSearchFinished = true;
       });
     }
   }
@@ -330,14 +224,13 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         setState(() {
           depositTrx = _dTransactions;
           withdrawTrx = _wTransactions;
+          isValidAddress = true;
+          isSearchFinished = true;
 
-          if (depositTrx.isEmpty) {
-            isValidAddress = false;
-          } else {
-            isValidAddress = true;
+          if (depositTrx.isNotEmpty) {
             isFiltering = false;
             _storageService.setLastSearchedAccount(this.query);
-            this.isSearchFinished = true;
+            isSearchFinished = true;
           }
         });
       }
@@ -374,13 +267,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
               }
             });
           });
-        } else {
-          setState(() {
-            if (params.containsKey("addr") && params.containsKey("rpc")) {
-            } else {
-              showSearchedAccount();
-            }
-          });
         }
       });
     }
@@ -405,6 +291,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                   children: <Widget>[
                     addHeader(),
                     !isLoggedIn ? addSearchInput() : Container(),
+                    !isTyping && query.isNotEmpty && !isSearchFinished ? addLoadingIndicator() : Container(),
                     !isTyping && query != "" && (isSearchFinished && !isValidAddress) ? addHeaderTitle() : Container(),
                     isValidAddress ? addAccountAddress() : Container(),
                     isValidAddress ? Wrap(children: tabItems()) : Container(),
@@ -472,6 +359,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
         child: Container(
           width: 20,
           height: 20,
+          margin: EdgeInsets.only(top: 20),
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
@@ -730,7 +618,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
               sortIndex = 0;
               isAscending = true;
               lastTxHash = '';
-              _storageService.setTabIndex(this.tabType);
             });
           },
           child: Column(

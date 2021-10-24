@@ -56,6 +56,7 @@ class _TopBarContentsState extends State<TopBarContents> {
 
   List<Widget> navItems(String nodeAddress) {
     List<Widget> items = [];
+    String rpc = Uri.encodeComponent(getIPOnly(nodeAddress));
 
     for (int i = 0; i < 6; i++) {
       if (!widget._loggedIn ? _notSearched[i] : true)
@@ -72,7 +73,7 @@ class _TopBarContentsState extends State<TopBarContents> {
               switch (i) {
                 case 0: // Account
                   Navigator.pushReplacementNamed(
-                      context, '/account' + (!widget._loggedIn ? '?rpc=$nodeAddress$navParam' : ''));
+                      context, '/account' + (!widget._loggedIn ? '?rpc=$rpc$navParam' : ''));
                   break;
                 case 1: // Deposit
                   Navigator.pushReplacementNamed(context, '/deposit');
@@ -82,11 +83,11 @@ class _TopBarContentsState extends State<TopBarContents> {
                   break;
                 case 3: // Network
                   Navigator.pushReplacementNamed(
-                      context, '/network' + (!widget._loggedIn ? '?rpc=$nodeAddress' : ''));
+                      context, '/network' + (!widget._loggedIn ? '?rpc=$rpc' : ''));
                   break;
                 case 4: // Proposals
                   Navigator.pushReplacementNamed(
-                      context, '/proposals' + (!widget._loggedIn ? '?rpc=$nodeAddress' : ''));
+                      context, '/proposals' + (!widget._loggedIn ? '?rpc=$rpc' : ''));
                   break;
                 case 5: // Settings
                   Navigator.pushReplacementNamed(context, widget._loggedIn ? '/settings' : '/login');

@@ -37,28 +37,31 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
 
-    var uri = Uri.dataFromString(html.window.location.href); //converts string to a uri
-    Map<String, String> params = uri.queryParameters; // query parameters automatically populated
-
-    if (params.containsKey("rpc")) {
-      var rpcURL = params['rpc'];
-      onConnectPressed(rpcURL);
-    } else {
-      onConnectPressed('localhost');
-    }
+    _storageService.getLiveRpcUrl().then((rpcUrl) {
+      var _networkId = BlocProvider.of<NetworkBloc>(context).state.networkId;
+      if (rpcUrl != null && rpcUrl.isNotEmpty && rpcUrl[0].isNotEmpty) {
+        this.setState(() {
+          networkId = _networkId;
+          isNetworkHealthy = true;
+          testedRpcUrl = getIPOnly(rpcUrl[0]);
+          isHttp = !rpcUrl[0].replaceAll("https://cors-anywhere.kira.network/", "").startsWith("https");
+          isRpcError = false;
+        });
+      } else {
+        onConnectPressed('localhost');
+      }
+    });
 
     _storageService.setTopBarStatus(false);
     _storageService.setLoginStatus(false);
     rpcUrlNode = FocusNode();
     rpcUrlController = TextEditingController();
-    getNodeStatus(true);
     initializeValues();
   }
 
   void initializeValues() {
     _storageService.setLastSearchedAccount("");
     _storageService.setTopbarIndex(0);
-    _storageService.setTabIndex(0);
   }
 
   @override
@@ -68,12 +71,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void getNodeStatus(bool inited) async {
+  void getNodeStatus() async {
     final _statusService = getIt<StatusService>();
-
-    if (!inited) {
-      await _statusService.getNodeStatus();
-    }
+    await _statusService.getNodeStatus();
 
     var rpcUrl = await _storageService.getLiveRpcUrl();
 
@@ -105,8 +105,8 @@ class _LoginScreenState extends State<LoginScreen> {
           testedRpcUrl = localhostChecked ? getIPOnly(rpcUrl[0]) : '';
           isNetworkHealthy = false;
           isLoading = false;
-          if (!inited) isRpcError = true;
-          if (!inited) localhostChecked = true;
+          isRpcError = true;
+          localhostChecked = true;
         });
       }
     }
@@ -330,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _storageService.setInterxRPCUrl(customInterxRPCUrl);
 
     Future.delayed(const Duration(milliseconds: 500), () async {
-      getNodeStatus(false);
+      getNodeStatus();
     });
   }
 
@@ -441,7 +441,7 @@ class _LoginScreenState extends State<LoginScreen> {
       style: 1,
       onPressed: () {
         _storageService.setLoginStatus(false);
-        Navigator.pushReplacementNamed(context, '/account?rpc=$testedRpcUrl');
+        Navigator.pushReplacementNamed(context, '/account?rpc=${Uri.encodeComponent(testedRpcUrl)}');
       },
     );
   }

@@ -283,6 +283,7 @@ class _NetworkScreenState extends State<NetworkScreen> {
                   this.setState(() {
                     isFiltering = false;
                     expandedTop = -1;
+                    validatorController.add("");
                   });
                 },
                 child: Icon(Icons.close, color: KiraColors.white, size: 30))
@@ -317,32 +318,57 @@ class _NetworkScreenState extends State<NetworkScreen> {
 
   Widget addSearchInput() {
     return Container(
-      width: 500,
-      child: AppTextField(
-        hintText: Strings.validatorQuery,
-        labelText: Strings.search,
-        textInputAction: TextInputAction.search,
-        maxLines: 1,
-        autocorrect: false,
-        keyboardType: TextInputType.text,
-        textAlign: TextAlign.left,
-        onChanged: (String newText) {
-          this.setState(() {
-            query = newText.toLowerCase();
-            expandedTop = -1;
-            validatorController.add(query);
-          });
-        },
-        padding: EdgeInsets.only(bottom: 15),
-        style: TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 16.0,
-          color: KiraColors.white,
-          fontFamily: 'NunitoSans',
-        ),
-        topMargin: 10,
-      ),
+        padding: EdgeInsets.all(5),
+        child: Row(children: [
+          Expanded(
+            flex: 1,
+            child: AppTextField(
+                hintText: Strings.validatorQuery,
+                labelText: Strings.search,
+                textInputAction: TextInputAction.search,
+                maxLines: 1,
+                autocorrect: false,
+                keyboardType: TextInputType.text,
+                textAlign: TextAlign.left,
+                onChanged: (String newText) {
+                  this.setState(() {
+                    query = newText.toLowerCase();
+                  });
+                },
+                padding: EdgeInsets.only(bottom: 15),
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 16.0,
+                  color: KiraColors.white,
+                  fontFamily: 'NunitoSans',
+                ),
+                topMargin: 10,
+              ),
+          ),
+          Container(
+            margin: EdgeInsets.only(left: 50),
+            child: InkWell(
+              onTap: () {
+                onSearchPressed();
+              },
+              child: Text(Strings.search, style: TextStyle(color: KiraColors.white.withOpacity(0.8), fontSize: 16))),
+            ),
+      ])
     );
+  }
+
+  void onSearchPressed() {
+    if (query.trim().isEmpty) {
+      AlertDialog alert = AlertDialog(title: Text(Strings.kiraNetwork), content: Text(Strings.noKeywordInput));
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return alert;
+        });
+      return;
+    }
+    expandedTop = -1;
+    validatorController.add(query);
   }
 
   Widget addTableHeader() {

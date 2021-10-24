@@ -66,7 +66,9 @@ class _ValidatorsTableState extends State<ValidatorsTable> {
       if (validators.length > startAt)
         currentValidators = validators.sublist(startAt, min(endAt, validators.length));
     });
-    if (newPage > 0)
+    if (currentValidators.length == 1 && newQuery != null && newQuery.isNotEmpty)
+      refreshExpandStatus(newExpandTop: currentValidators[0].top);
+    else if (newPage > 0)
       refreshExpandStatus();
   }
 
