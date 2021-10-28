@@ -61,8 +61,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   var isSearchFinished = false;
 
   void getTokens() async {
-    print(isLoggedIn);
-    print(currentAccount);
     if (isLoggedIn) {
       Account curAccount;
       curAccount = _accountService.currentAccount;
@@ -113,9 +111,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
     }
   }
 
-  void navigate2AccountScreen({lastSearched = false}) async {
-    if (lastSearched)
-      query = await _storageService.getLastSearchedAccount();
+  void navigate2AccountScreen() async {
     if (this.query.isNotEmpty) {
       String rpc = Uri.encodeComponent(getIPOnly(this.apiUrl[0]));
       Navigator.pushReplacementNamed(context, '/account?addr=$query&rpc=$rpc');
