@@ -61,6 +61,19 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
   var isSearchFinished = false;
 
   void getTokens() async {
+    print(isLoggedIn);
+    print(currentAccount);
+    if (isLoggedIn) {
+      Account curAccount;
+      curAccount = _accountService.currentAccount;
+      if (curAccount == null) {
+        curAccount = await _storageService.getCurrentAccount();
+      }
+      this.setState(() {
+        currentAccount = curAccount;
+      });
+    }
+
     if (currentAccount == null) return;
 
     List<String> _faucetTokens = _tokenService.faucetTokens;
@@ -86,7 +99,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
 
     if (mounted) {
       setState(() {
-        currentAccount = currentAccount;
         tokens = _tokenBalance;
         faucetTokens = _faucetTokens;
         faucetToken = faucetTokens.length > 0 ? faucetTokens[0] : null;
@@ -163,14 +175,17 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
       Uint8List data = Uint8List.fromList(bech32);
       hexAddress = hex.encode(_convertBits(data, 5, 8));
 
-      currentAccount = new Account(
+      var curAccount = new Account(
           networkInfo: new NetworkInfo(bech32Hrp: "kira", lcdUrl: apiUrl[0] + '/api/cosmos'),
           hexAddress: hexAddress,
           privateKey: "",
           publicKey: "");
 
-      await QueryService.getAccountData(currentAccount);
-      await getTransactions(currentAccount);
+      this.setState(() {
+        currentAccount = curAccount;
+      });
+
+      await getTransactions(curAccount);
     } catch (e) {
       setState(() {
         isValidAddress = false;
@@ -230,7 +245,6 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
           if (depositTrx.isNotEmpty) {
             isFiltering = false;
             _storageService.setLastSearchedAccount(this.query);
-            isSearchFinished = true;
           }
         });
       }

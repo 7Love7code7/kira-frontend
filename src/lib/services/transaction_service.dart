@@ -156,7 +156,7 @@ class TransactionService {
     String url = isWithdrawal == true ? "withdraws" : "deposits";
     String bech32Address = address;
 
-    var response = await http.get(apiUrl[0] + "/api/$url?account=$bech32Address&&type=all&&max=$max",
+    var response = await http.get(apiUrl[0] + "/api/$url?account=$bech32Address&&ype=all&max=$max",
         headers: {'Access-Control-Allow-Origin': apiUrl[1]});
 
     Map<String, dynamic> body = jsonDecode(response.body);
