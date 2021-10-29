@@ -264,8 +264,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Account currentAccount = accounts.where((e) => e.encryptedMnemonic == accountId).toList()[0];
     await _accountService.setCurrentAccount(currentAccount);
 
-    Token feeToken = tokens.where((e) => e.ticker == feeTokenTicker).toList()[0];
-    _tokenService.setFeeToken(feeToken);
+    List<Token> feeTokenList = tokens.where((e) => e.ticker == feeTokenTicker).toList();
+    if (feeTokenList.length > 0) {
+      _tokenService.setFeeToken(feeTokenList[0]);
+    }
 
     await _storageService.setValidators(validators);
 
