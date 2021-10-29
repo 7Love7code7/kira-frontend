@@ -314,7 +314,7 @@ class _TokenBalanceScreenState extends State<TokenBalanceScreen> {
                           ? (tokens.isEmpty)
                               ? Container(
                                   margin: EdgeInsets.only(top: 20, left: 20),
-                                  child: Text("No tokens",
+                                  child: Text(Strings.noTokenBalance,
                                       style: TextStyle(
                                           color: KiraColors.white, fontSize: 18, fontWeight: FontWeight.bold)))
                               : addTokenTable()

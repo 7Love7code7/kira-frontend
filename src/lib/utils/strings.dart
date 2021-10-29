@@ -82,6 +82,7 @@ class Strings {
   static const String yes = "Yes";
   static const String no = "No";
 
+  static const String noTokenBalance = "No Token Balance";
   static const String httpConnected = "Http protocol is active";
   static const String failedToConnect = "Failed to connect";
   static const String selectFullNode = "Input or select address of the full-node you trust";
